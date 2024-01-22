@@ -4,7 +4,27 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:
-    -   id: trailing-whitespace
-    -   id: end-of-file-fixer
+#    -   id: trailing-whitespace
+#    -   id: end-of-file-fixer
     -   id: check-yaml
     -   id: check-added-large-files
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.1.11
+  hooks:
+    # Run the linter.
+    - id: ruff
+      args: [ --fix ]
+    # Run the formatter.
+    - id: ruff-format
+
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v0.971
+  hooks:
+    - id: mypy
+      types: [python]
+      args: [--strict, --install-types, --non-interactive, --ignore-missing-imports, --allow-subclassing-any, --allow-untyped-decorators]
+
+#Exclude the reports folder from checks
+exclude: ^reports/
