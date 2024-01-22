@@ -1,9 +1,35 @@
-# src
+# Master Thesis 2024 by August Semrau
+This project works with LLMs. More info will be update as progress is made.  
+Deadline for thesis is 22st of June 2024.
 
-Master Thesis by August Semrau
+## Setup
+To setup the project, run the following commands:
+
+```bash
+# Clone the repository
+git clone https://github.com/augustsemrau/thesis2024.git
+
+# Create virtual environment
+make create_environment
+
+# Activate virtual environment
+conda activate src
+
+# Install dependencies
+make requirements
+
+# Install dev dependencies
+make requirements_dev
+```
+
+## Data
+#TODO: Add data description
+
+## Running the code
+#TODO: Add instructions for running the code
+
 
 ## Project structure
-
 The directory structure of the project looks like this:
 
 ```txt
@@ -57,7 +83,3 @@ The directory structure of the project looks like this:
 │
 └── LICENSE              <- Open-source license if one is chosen
 ```
-
-Created using [mlops_template](https://github.com/SkafteNicki/mlops_template),
-a [cookiecutter template](https://github.com/cookiecutter/cookiecutter) for getting
-started with Machine Learning Operations (MLOps).
