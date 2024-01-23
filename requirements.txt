@@ -1,6 +1,7 @@
 langchain==0.1.1
+langchain-openai==0.0.3
 ipykernel==6.29.0
-
+tensorboard==2.15.1
 
 
 
