@@ -177,3 +177,6 @@ cython_debug/
 #.idea/
 
 notebook_00.ipynb
+
+# Data
+data/
