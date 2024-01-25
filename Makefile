@@ -20,6 +20,11 @@ PYTHON_INTERPRETER = python
 create_environment:
 	conda create --name $(PROJECT_NAME) python=$(PYTHON_VERSION) --no-default-packages -y
 
+# Delete the conda environment
+delete_environment:
+	conda deactivate
+	conda remove --name $(PROJECT_NAME)
+
 ## Install Python Dependencies
 requirements:
 	$(PYTHON_INTERPRETER) -m pip install -U pip setuptools wheel
