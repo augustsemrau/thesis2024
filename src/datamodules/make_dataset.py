@@ -66,10 +66,8 @@ if __name__ == '__main__':
     # embedding_func = OpenAIEmbeddings()
     embedding_func = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
-    # Path for the PDF documents
-    data_path = 'data/raw/DLAI_CWYDcourse'
-    # Path for the persistent Chroma vector store
-    persist_path = 'data/processed/chroma'
+    data_path = os.path.join(os.getcwd(), 'data/raw/DLAI_CWYDcourse')
+    persist_path = os.path.join(os.getcwd(), 'data/processed/chroma')
 
     # Get the data and process it
     create_persistent_chroma_store(embedding_function=embedding_func,
