@@ -17,8 +17,9 @@ lark==1.1.9
 panel==1.3.7
 docarray==0.32.1
 jupyter_bokeh==3.0.7
+sentence-transformers==2.2.2
 
 
 
-
-#torch >= 2.1.0
+#torch >= 2.1.2
+#torchvision >= 0.16.2
