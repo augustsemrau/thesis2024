@@ -22,8 +22,22 @@ make requirements
 make requirements_dev
 ```
 
+## OpenAI API Key
+To use the OpenAI API, you need to set the environment variable OPENAI_API_KEY, like so:
+```bash
+export OPENAI_API_KEY=<your key here>
+```
+
+
 ## Data
-#TODO: Add data description
+In order to create the relevant dataset, you need to:
+1. Download the raw data and place it in the data/raw folder. A link for the raw data will be provided later.
+2. Run the following command from the root folder (thesis2024):
+```bash
+python src/datamodules/make_dataset.py
+```
+This will convert all raw data into a vector store using Chroma.
+
 
 ## Running the code
 #TODO: Add instructions for running the code

@@ -4,18 +4,19 @@ Making the dataset for the thesis, by loading datasources (currently PDFs)
 and creating a persistent Chroma vector store from them.
 """
 
-
 import os
 import openai
-from langchain_community.embeddings.sentence_transformer import (SentenceTransformerEmbeddings)
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
+from langchain_community.vectorstores import Chroma
 
 
-def create_persistent_chroma_store(embedding_func,
-                                   directory='docs/',
-                                   persist_path='chroma/',
+
+
+def create_persistent_chroma_store(embedding_function,
+                                   data_dir,
+                                   persist_dir,
                                    chunk_size=1000,
                                    chunk_overlap=150):
     """Create Vector Store.
@@ -29,9 +30,9 @@ def create_persistent_chroma_store(embedding_func,
     """
     # Process each PDF file in the directory
     all_docs = []
-    for filename in os.listdir(directory):
+    for filename in os.listdir(data_dir):
         if filename.endswith('.pdf'):
-            file_path = os.path.join(directory, filename)
+            file_path = os.path.join(data_dir, filename)
 
             # Load PDF document
             loader = PyPDFLoader(file_path)
@@ -48,11 +49,12 @@ def create_persistent_chroma_store(embedding_func,
             all_docs.extend(docs)
 
     # Save the Chroma vector store persistently
-    # Chroma.from_documents(all_docs, embedding_function=OpenAIEmbeddings(), persist_directory=persist_path)
-    Chroma.from_documents(all_docs, embedding_func, persist_directory=persist_path)
-    print(f"Chroma vector store created and saved at {persist_path}")
+    Chroma.from_documents(all_docs, embedding_function, persist_directory=persist_dir)
+    print(f"Chroma vector store created and saved at {persist_dir}")
 
     return
+
+
 
 
 if __name__ == '__main__':
@@ -61,7 +63,18 @@ if __name__ == '__main__':
     openai.api_key  = os.environ['OPENAI_API_KEY']
 
     ## Initiate embedding function
+    # embedding_func = OpenAIEmbeddings()
     embedding_func = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
+    # Path for the PDF documents
+    data_path = 'data/raw/DLAI_CWYDcourse'
+    # Path for the persistent Chroma vector store
+    persist_path = 'data/processed/chroma'
+
     # Get the data and process it
+    create_persistent_chroma_store(embedding_function=embedding_func,
+                                   data_dir=data_path,
+                                   persist_dir=persist_path,
+                                   chunk_size=1000,
+                                   chunk_overlap=150)
     pass
