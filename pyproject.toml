@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "src"
+name = "thesis2024"
 version = "0.0.1"
 description = "Master Thesis by August Semrau"
 authors = [
@@ -14,8 +14,6 @@ readme = "README.md"
 requires-python = ">=3.10.11"
 dynamic = ["dependencies", "optional-dependencies"]
 
-[tool.setuptools]
-packages = ["src"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
