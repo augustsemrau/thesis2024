@@ -20,6 +20,9 @@ make requirements
 
 # Install dev dependencies
 make requirements_dev
+
+# pip install the project
+pip install -e .
 ```
 
 ## OpenAI API Key
@@ -34,13 +37,16 @@ In order to create the relevant dataset, you need to:
 1. Download the raw data and place it in the data/raw folder. A link for the raw data will be provided later.
 2. Run the following command from the root folder (thesis2024):
 ```bash
-python src/datamodules/make_dataset.py
+python src/thesis2024/datamodules/make_dataset.py
 ```
 This will convert all raw data into a vector store using Chroma.
 
 
 ## Running the code
-#TODO: Add instructions for running the code
+The first chatbot prototype can be run using the following command from the root folder (thesis2024):
+```bash
+python src/thesis2024/models/chatbot_v1.py
+```
 
 
 ## Project structure
