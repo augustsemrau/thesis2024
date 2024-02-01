@@ -83,11 +83,11 @@ The directory structure of the project looks like this:
 │
 ├── tests                <- Test files
 │
-├── src  <- Source code for use in this project.
+├── src/thesis2024  <- Source code for use in this project.
 │   │
 │   ├── __init__.py      <- Makes folder a Python module
 │   │
-│   ├── data             <- Scripts to download or generate data
+│   ├── datamodules      <- Scripts to download or generate data
 │   │   ├── __init__.py
 │   │   └── make_dataset.py
 │   │
