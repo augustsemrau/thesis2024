@@ -45,7 +45,7 @@ This will convert all raw data into a vector store using Chroma.
 ## Running the code
 The first chatbot prototype can be run using the following command from the root folder (thesis2024):
 ```bash
-python src/thesis2024/models/chatbot_v1.py
+streamlit run src/thesis2024/models/chatbot_v1.py
 ```
 
 
