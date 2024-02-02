@@ -4,9 +4,11 @@ ipykernel==6.29.0
 tensorboard==2.15.1
 scikit-learn==1.4.0
 
-langchain==0.1.4
-langchain-community==0.0.16
-langchain-openai==0.0.3
+langchain
+langchain-community
+langchain-openai
+langgraph
+openai
 pypdf==4.0.0
 
 # Below versions are not up-to-date, but they are the latest versions that work with the current code
@@ -21,6 +23,9 @@ jupyter_bokeh==3.0.7
 sentence-transformers==2.2.2
 openai==1.9.0
 streamlit==1.30.0
+
+matplotlib==3.8.2
+
 
 #torch >= 2.1.2
 #torchvision >= 0.16.2
