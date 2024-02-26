@@ -57,23 +57,6 @@ def create_persistent_chroma_store(openai_embedding, chunk_size, chunk_overlap):
     return print(f"Chroma vector store created and saved at {persist_dir}")
 
 
-def load_peristent_chroma_store(openai_embedding):
-    """Load a persistent Chroma vector store.
-
-    :param persist_path: Path to the persistent Chroma vector store.
-    :return: Chroma vector store.
-    """
-    ## Initiate embedding function
-    if openai_embedding:
-        embedding_func = OpenAIEmbeddings()
-    else:
-        embedding_func = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-
-    persist_dir = os.path.join(os.getcwd(), 'data/processed/chroma')
-
-    return Chroma(persist_directory=persist_dir, embedding_function=embedding_func)
-
-
 def add_files_to_chroma_store(new_files_dir):
     """Add new files to the Chroma vector store.
 
