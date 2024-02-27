@@ -1,26 +1,18 @@
-"""Main script for the thesis project."""
+"""Agent that determines whether to retrieve data, and if so, uses crag to retrieve data."""
+
 
 import os
-import sys
-
-## Langchain imports
-from langgraph.graph import END, StateGraph
-
-## Local imports
-from thesis2024.utils import GraphState
-from thesis2024.datamodules.crag import CragNodes
-from thesis2024.datamodules.retrieval_agent import RetrievalAgent
 
 
 
 
+class RetrievalAgentNodes:
 
 
 
 
-### Function for building graph
-def build_rag_graph(node_class):
-    """Build the graph for the CRAG model."""
+def build_retrieval_crag_agent(node_class):
+    """Build the retrieval agent using crag."""
     workflow = StateGraph(GraphState)
 
     # Define the nodes
@@ -48,9 +40,6 @@ def build_rag_graph(node_class):
     # Compile
     app = workflow.compile()
     return app
-
-
-
 
 if __name__ == "__main__":
     # Build the graph

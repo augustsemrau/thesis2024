@@ -39,20 +39,11 @@ from langgraph.graph import END, StateGraph
 # Imports for running this file
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
+from thesis2024.utils import GraphState
 
 
 
 
-class GraphState(TypedDict):
-    """Represents the state of our graph.
-
-    Attributes
-    ----------
-        keys: A dictionary where each key is a string.
-
-    """
-
-    keys: Dict[str, any]
 
 
 
@@ -78,7 +69,9 @@ class CragNodes():
 
         Args:
         ----
-            gpt_model (str): The GPT model to use for generation.
+            generate_model (str): The model to use for generation.
+            grade_model (str): The model to use for grading.
+            transform_query_model (str): The model to use for transforming the query.
 
         """
         self.generate_model = generate_model
@@ -240,7 +233,7 @@ class CragNodes():
             Look at the input and try to reason about the underlying sematic intent / meaning. \n 
             Here is the initial question:
             \n ------- \n
-            {question} 
+            {question}
             \n ------- \n
             Formulate an improved question: """,
             input_variables=["question"],
@@ -312,10 +305,8 @@ class CragNodes():
             return "generate"
 
 
-
 ### Function for building graph
-
-def build_graph(node_class):
+def build_rag_graph(node_class):
     """Build the graph for the CRAG model."""
     workflow = StateGraph(GraphState)
 
@@ -349,14 +340,6 @@ def build_graph(node_class):
 
 
 
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
 
     # Set environment variables
@@ -372,19 +355,17 @@ if __name__ == "__main__":
 
 
 
-
-
     # Load vectorstore
-    vectorstore = load_peristent_chroma_store(openai_embedding=True)
+    # vectorstore = load_peristent_chroma_store(openai_embedding=True)
     retriever = load_peristent_chroma_store(openai_embedding=True).as_retriever()
 
     crag_nodes = CragNodes()
     # Build graph
-    app = build_graph(node_class=crag_nodes)
+    app = build_rag_graph(node_class=crag_nodes)
 
 
     # Run
-    inputs = {"keys": {"question": "What are some aspects of machine learning that are important for a data scientist to know?"}}
+    inputs = {"keys": {"question": "Who is the teacher of the machine learning course?"}}
     for output in app.stream(inputs):
         for key, value in output.items():
             # Node
