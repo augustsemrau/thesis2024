@@ -363,7 +363,7 @@ class RetrievalAgent:
 
 
 
-    def agent(self, state):
+    def retrieval_agent(self, state):
         """Node Function: Invokes the agent model to generate a response based on the current state.
 
         Invokes the agent model to generate a response based on the current state. Given
@@ -379,13 +379,14 @@ class RetrievalAgent:
 
         """
         print("---CALL AGENT---")
-        messages = state["messages"]
+        state_dict = state["keys"]
+        messages = state_dict["messages"]
         model = ChatOpenAI(temperature=0, streaming=True, model=self.retrieval_agent_model)
         functions = [format_tool_to_openai_function(t) for t in tools]
         model = model.bind_functions(functions)
         response = model.invoke(messages)
         # We return a list, because this will get added to the existing list
-        return {"messages": [response]}
+        return {"keys": {"messages": [response]}}
 
 
     def should_retrieve(self, state):
@@ -404,7 +405,8 @@ class RetrievalAgent:
 
         """
         print("---DECIDE TO RETRIEVE---")
-        messages = state["messages"]
+        state_dict = state["keys"]
+        messages = state_dict["messages"]
         last_message = messages[-1]
 
         # If there is no function call, then we finish
