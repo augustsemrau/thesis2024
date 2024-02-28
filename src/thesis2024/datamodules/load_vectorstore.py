@@ -7,7 +7,7 @@ from langchain_openai import OpenAIEmbeddings
 
 
 
-def load_peristent_chroma_store(openai_embedding):
+def load_peristent_chroma_store(openai_embedding, vectorstore_path="data/processed/chroma"):
     """Load a persistent Chroma vector store.
 
     :param persist_path: Path to the persistent Chroma vector store.
@@ -19,7 +19,7 @@ def load_peristent_chroma_store(openai_embedding):
     else:
         embedding_func = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
 
-    persist_dir = os.path.join(os.getcwd(), 'data/processed/chroma')
+    persist_dir = os.path.join(os.getcwd(), vectorstore_path)
     return Chroma(persist_directory=persist_dir, embedding_function=embedding_func)
 
 

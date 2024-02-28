@@ -5,10 +5,10 @@ import os
 import uuid
 
 # Imports for retriever
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import WebBaseLoader
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+# from langchain.text_splitter import RecursiveCharacterTextSplitter
+# from langchain_community.document_loaders import WebBaseLoader
+# from langchain_community.vectorstores import Chroma
+# from langchain_openai import OpenAIEmbeddings
 
 # Imports for state
 from typing import Dict, TypedDict
@@ -47,7 +47,7 @@ from thesis2024.utils import GraphState
 
 
 
-class CragNodes():
+class Crag():
     """Represents the nodes of our graph.
 
     Attributes
@@ -61,9 +61,10 @@ class CragNodes():
     """
 
     def __init__(self,
-                 generate_model: str="gpt-3.5-turbo",
-                 grade_model: str="gpt-4-0125-preview",
-                 transform_query_model: str="gpt-4-0125-preview"
+                generate_model: str="gpt-3.5-turbo",
+                grade_model: str="gpt-4-0125-preview",
+                transform_query_model: str="gpt-4-0125-preview",
+                vectorstore_dir: str="data/processed/chroma"
                  ):
         """Initialize the CRAG nodes.
 
@@ -72,11 +73,17 @@ class CragNodes():
             generate_model (str): The model to use for generation.
             grade_model (str): The model to use for grading.
             transform_query_model (str): The model to use for transforming the query.
+            vectorstore_dir (str): The directory of the vectorstore.
 
         """
         self.generate_model = generate_model
         self.grade_model = grade_model
         self.transform_query_model = transform_query_model
+
+        # Load vectorstore
+        # vectorstore = load_peristent_chroma_store(openai_embedding=True)
+        self.retriever = load_peristent_chroma_store(openai_embedding=True,
+                                                    vectorstore_path=vectorstore_dir).as_retriever()
         return None
 
 
@@ -95,7 +102,7 @@ class CragNodes():
         print("---RETRIEVE---")
         state_dict = state["keys"]
         question = state_dict["question"]
-        documents = retriever.get_relevant_documents(question)
+        documents = self.retriever.get_relevant_documents(question)
         return {"keys": {"documents": documents, "question": question}}
 
 
@@ -305,36 +312,36 @@ class CragNodes():
             return "generate"
 
 
-### Function for building graph
-def build_rag_graph(node_class):
-    """Build the graph for the CRAG model."""
-    workflow = StateGraph(GraphState)
+    ### Function for building graph
+    def build_rag_graph(self):
+        """Build the graph for the CRAG model."""
+        workflow = StateGraph(GraphState)
 
-    # Define the nodes
-    workflow.add_node("retrieve", node_class.retrieve)  # retrieve
-    workflow.add_node("grade_documents", node_class.grade_documents)  # grade documents
-    workflow.add_node("generate", node_class.generate)  # generatae
-    workflow.add_node("transform_query", node_class.transform_query)  # transform_query
-    workflow.add_node("web_search", node_class.web_search)  # web search
+        # Define the nodes
+        workflow.add_node("retrieve", self.retrieve)  # retrieve
+        workflow.add_node("grade_documents", self.grade_documents)  # grade documents
+        workflow.add_node("generate", self.generate)  # generatae
+        workflow.add_node("transform_query", self.transform_query)  # transform_query
+        workflow.add_node("web_search", self.web_search)  # web search
 
-    # Build graph
-    workflow.set_entry_point("retrieve")
-    workflow.add_edge("retrieve", "grade_documents")
-    workflow.add_conditional_edges(
-        "grade_documents",
-        node_class.decide_to_generate,
-        {
-            "transform_query": "transform_query",
-            "generate": "generate",
-        },
-    )
-    workflow.add_edge("transform_query", "web_search")
-    workflow.add_edge("web_search", "generate")
-    workflow.add_edge("generate", END)
+        # Build graph
+        workflow.set_entry_point("retrieve")
+        workflow.add_edge("retrieve", "grade_documents")
+        workflow.add_conditional_edges(
+            "grade_documents",
+            self.decide_to_generate,
+            {
+                "transform_query": "transform_query",
+                "generate": "generate",
+            },
+        )
+        workflow.add_edge("transform_query", "web_search")
+        workflow.add_edge("web_search", "generate")
+        workflow.add_edge("generate", END)
 
-    # Compile
-    app = workflow.compile()
-    return app
+        # Compile
+        app = workflow.compile()
+        return app
 
 
 
@@ -355,17 +362,13 @@ if __name__ == "__main__":
 
 
 
-    # Load vectorstore
-    # vectorstore = load_peristent_chroma_store(openai_embedding=True)
-    retriever = load_peristent_chroma_store(openai_embedding=True).as_retriever()
-
-    crag_nodes = CragNodes()
+    CragClass = Crag()
     # Build graph
-    app = build_rag_graph(node_class=crag_nodes)
+    app = CragClass.build_rag_graph()
 
 
     # Run
-    inputs = {"keys": {"question": "Who is the teacher of the machine learning course?"}}
+    inputs = {"keys": {"question": "Who is the teacher of the machine learning course, and how come the highest mountains are located in asia?"}}
     for output in app.stream(inputs):
         for key, value in output.items():
             # Node
