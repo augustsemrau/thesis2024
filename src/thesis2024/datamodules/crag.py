@@ -183,7 +183,7 @@ class Crag():
 
         # Prompt
         prompt = PromptTemplate(
-            template="""You are a grader assessing relevance of a retrieved document to a user question. \n 
+            template="""You are a grader assessing relevance of a retrieved document to a user question. \n
             Here is the retrieved document: \n\n {context} \n\n
             Here is the user question: {question} \n
             If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. \n
@@ -344,6 +344,109 @@ class Crag():
         return app
 
 
+
+class RetrievalAgent:
+    """Agent that determines whether to retrieve data, and if so, uses crag to retrieve data."""
+
+    def __init__(self,
+                retrieval_agent_model: str="gpt-4-0125-preview"
+                ):
+        """Initialize the class.
+
+        Args:
+        ----
+            retrieval_agent_model (str): The model to use for the retrieval agent
+
+        """
+        self.retrieval_agent_model = retrieval_agent_model
+        pass
+
+
+
+    def agent(self, state):
+        """Node Function: Invokes the agent model to generate a response based on the current state.
+
+        Invokes the agent model to generate a response based on the current state. Given
+        the question, it will decide to retrieve using the retriever tool, or simply end.
+
+        Args:
+        ----
+            state (messages): The current state
+
+        Returns:
+        -------
+            dict: The updated state with the agent response apended to messages
+
+        """
+        print("---CALL AGENT---")
+        messages = state["messages"]
+        model = ChatOpenAI(temperature=0, streaming=True, model=self.retrieval_agent_model)
+        functions = [format_tool_to_openai_function(t) for t in tools]
+        model = model.bind_functions(functions)
+        response = model.invoke(messages)
+        # We return a list, because this will get added to the existing list
+        return {"messages": [response]}
+
+
+    def should_retrieve(self, state):
+        """Edge Function: Decide whether to retrieve documents.
+
+        This function checks the last message in the state for a function call. If a function call is
+        present, the process continues to retrieve information. Otherwise, it ends the process.
+
+        Args:
+        ----
+            state (messages): The current state
+
+        Returns:
+        -------
+            str: A decision to either "continue" the retrieval process or "end" it
+
+        """
+        print("---DECIDE TO RETRIEVE---")
+        messages = state["messages"]
+        last_message = messages[-1]
+
+        # If there is no function call, then we finish
+        if "function_call" not in last_message.additional_kwargs:
+            print("---DECISION: DO NOT RETRIEVE / DONE---")
+            return "end"
+        # Otherwise there is a function call, so we continue
+        else:
+            print("---DECISION: RETRIEVE---")
+            return "continue"
+
+
+        ### Function for building graph
+    def build_rag_graph(self):
+        """Build the graph for the CRAG model."""
+        workflow = StateGraph(GraphState)
+
+        # Define the nodes
+        workflow.add_node("retrieve", self.retrieve)  # retrieve
+        workflow.add_node("grade_documents", self.grade_documents)  # grade documents
+        workflow.add_node("generate", self.generate)  # generate
+        workflow.add_node("transform_query", self.transform_query)  # transform_query
+        workflow.add_node("web_search", self.web_search)  # web search
+
+        # Build graph
+        workflow.set_entry_point("retrieve")
+        workflow.add_edge("retrieve", "grade_documents")
+        workflow.add_conditional_edges(
+            "grade_documents",
+            self.decide_to_generate,
+            {
+                "transform_query": "transform_query",
+                "generate": "generate",
+            },
+        )
+        workflow.add_edge("transform_query", "web_search")
+        workflow.add_edge("web_search", "generate")
+        workflow.add_edge("generate", END)
+
+        # Compile
+        app = workflow.compile()
+        return app
 
 
 
