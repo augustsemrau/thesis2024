@@ -48,7 +48,7 @@ from thesis2024.utils import GraphState
 
 
 class Crag():
-    """Represents the nodes of our graph.
+    """Represents the nodes and edges which make up a CRAG graph.
 
     Attributes
     ----------
@@ -88,7 +88,7 @@ class Crag():
 
 
     def retrieve(self, state):
-        """CRAG Node Function: Retrieve documents.
+        """Node Function: Retrieve documents.
 
         Args:
         ----
@@ -107,7 +107,7 @@ class Crag():
 
 
     def generate(self, state):
-        """CRAG Node Function: Generate answer.
+        """Node Function: Generate answer.
 
         Args:
         ----
@@ -144,7 +144,7 @@ class Crag():
 
 
     def grade_documents(self, state):
-        """CRAG Node Function: Determine whether the retrieved documents are relevant to the question.
+        """Node Function: Determine whether the retrieved documents are relevant to the question.
 
         Args:
         ----
@@ -218,7 +218,7 @@ class Crag():
 
 
     def transform_query(self, state):
-        """CRAG Node Function: Transform the query to produce a better question.
+        """Node Function: Transform the query to produce a better question.
 
         Args:
         ----
@@ -257,7 +257,7 @@ class Crag():
 
 
     def web_search(self, state):
-        """CRAG Node Function: Web search based on the re-phrased question using Tavily API.
+        """Node Function: Web search based on the re-phrased question using Tavily API.
 
         Args:
         ----
@@ -284,7 +284,7 @@ class Crag():
 
 
     def decide_to_generate(self, state):
-        """CRAG Edge Function: Determine whether to generate an answer or re-generate a question for web search.
+        """Edge Function: Determine whether to generate an answer or re-generate a question for web search.
 
         Args:
         ----
