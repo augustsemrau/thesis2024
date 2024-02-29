@@ -349,6 +349,7 @@ class RetrievalAgent:
     """Agent that determines whether to retrieve data, and if so, uses crag to retrieve data."""
 
     def __init__(self,
+                crag_class,
                 retrieval_agent_model: str="gpt-4-0125-preview"
                 ):
         """Initialize the class.
@@ -358,6 +359,7 @@ class RetrievalAgent:
             retrieval_agent_model (str): The model to use for the retrieval agent
 
         """
+        self.crag_class = crag_class
         self.retrieval_agent_model = retrieval_agent_model
         pass
 
@@ -382,8 +384,8 @@ class RetrievalAgent:
         state_dict = state["keys"]
         messages = state_dict["messages"]
         model = ChatOpenAI(temperature=0, streaming=True, model=self.retrieval_agent_model)
-        functions = [format_tool_to_openai_function(t) for t in tools]
-        model = model.bind_functions(functions)
+        # functions = [format_tool_to_openai_function(t) for t in tools]
+        # model = model.bind_functions(functions)
         response = model.invoke(messages)
         # We return a list, because this will get added to the existing list
         return {"keys": {"messages": [response]}}
@@ -420,23 +422,32 @@ class RetrievalAgent:
 
 
         ### Function for building graph
-    def build_rag_graph(self):
+    def build_retrieval_rag_graph(self):
         """Build the graph for the CRAG model."""
         workflow = StateGraph(GraphState)
 
         # Define the nodes
-        workflow.add_node("retrieve", self.retrieve)  # retrieve
-        workflow.add_node("grade_documents", self.grade_documents)  # grade documents
-        workflow.add_node("generate", self.generate)  # generate
-        workflow.add_node("transform_query", self.transform_query)  # transform_query
-        workflow.add_node("web_search", self.web_search)  # web search
+        workflow.add_node("retrieval_agent", self.retrieval_agent)  # retrieve
+        workflow.add_node("retrieve", self.crag_class.retrieve)  # retrieve
+        workflow.add_node("grade_documents", self.crag_class.grade_documents)  # grade documents
+        workflow.add_node("generate", self.crag_class.generate)  # generate
+        workflow.add_node("transform_query", self.crag_class.transform_query)  # transform_query
+        workflow.add_node("web_search", self.crag_class.web_search)  # web search
 
         # Build graph
-        workflow.set_entry_point("retrieve")
+        workflow.set_entry_point("retrieval_agent")
+        workflow.add_conditional_edges(
+            "retrieval_agent",
+            self.should_retrieve,
+            {
+                "continue": "retrieve",
+                "end": END,
+            },
+        )
         workflow.add_edge("retrieve", "grade_documents")
         workflow.add_conditional_edges(
             "grade_documents",
-            self.decide_to_generate,
+            self.crag_class.decide_to_generate,
             {
                 "transform_query": "transform_query",
                 "generate": "generate",
