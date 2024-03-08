@@ -4,7 +4,7 @@
 import csv
 
 # Local imports
-from thesis2024.evaluation.eval_utils import normalize_answer
+from thesis2024.evaluation.eval_utils import normalize_answer, keep_only_alphanumeric
 
 
 class ArcBenhmark:
@@ -93,12 +93,14 @@ class ArcBenhmark:
             print("\n")
             print("Question: ", question['question'])
             model_answer = model.predict(question['question'])
+            normalized_model_answer = keep_only_alphanumeric(model_answer)
             print("Prediction: ", model_answer)
+            print("Normalized Prediction: ", normalized_model_answer)
             correct_answer = question['AnswerKey']
             print("Correct Answer: ", correct_answer)
 
 
-            if model_answer == correct_answer:
+            if normalized_model_answer == correct_answer:
                 score += 1
 
         return score, total_possible_score
