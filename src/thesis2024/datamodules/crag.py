@@ -84,6 +84,7 @@ class Crag():
         # vectorstore = load_peristent_chroma_store(openai_embedding=True)
         self.retriever = load_peristent_chroma_store(openai_embedding=True,
                                                     vectorstore_path=vectorstore_dir).as_retriever()
+        self.app = self.build_rag_graph()
         return None
 
 
@@ -283,33 +284,33 @@ class Crag():
 
 
 
-    def decide_to_generate(self, state):
-        """Edge Function: Determine whether to generate an answer or re-generate a question for web search.
+    # def decide_to_generate(self, state):
+    #     """Edge Function: Determine whether to generate an answer or re-generate a question for web search.
 
-        Args:
-        ----
-            state (dict): The current state of the agent, including all keys.
+    #     Args:
+    #     ----
+    #         state (dict): The current state of the agent, including all keys.
 
-        Returns:
-        -------
-            str: Next node to call
+    #     Returns:
+    #     -------
+    #         str: Next node to call
 
-        """
-        print("---DECIDE TO GENERATE---")
-        state_dict = state["keys"]
-        question = state_dict["question"]
-        filtered_documents = state_dict["documents"]
-        search = state_dict["run_web_search"]
+    #     """
+    #     print("---DECIDE TO GENERATE---")
+    #     state_dict = state["keys"]
+    #     question = state_dict["question"]
+    #     filtered_documents = state_dict["documents"]
+    #     search = state_dict["run_web_search"]
 
-        if search == "Yes":
-            # All documents have been filtered check_relevance
-            # We will re-generate a new query
-            print("---DECISION: TRANSFORM QUERY and RUN WEB SEARCH---")
-            return "transform_query"
-        else:
-            # We have relevant documents, so generate answer
-            print("---DECISION: GENERATE---")
-            return "generate"
+    #     if search == "Yes":
+    #         # All documents have been filtered check_relevance
+    #         # We will re-generate a new query
+    #         print("---DECISION: TRANSFORM QUERY and RUN WEB SEARCH---")
+    #         return "transform_query"
+    #     else:
+    #         # We have relevant documents, so generate answer
+    #         print("---DECISION: GENERATE---")
+    #         return "generate"
 
 
     ### Function for building graph
@@ -342,6 +343,33 @@ class Crag():
         # Compile
         app = workflow.compile()
         return app
+
+
+    def predict(self, question: str):
+        """Predict the answer to a question.
+
+        Args:
+        ----
+        question: str
+            The question to answer.
+
+        Returns:
+        -------
+        str
+            The generated answer to the question.
+
+        """
+        inputs = {"keys": {"question": question}}
+        for output in self.app.stream(inputs):
+            for key, value in output.items():
+                # Node
+                pprint.pprint(f"Node '{key}':")
+                # Optional: print full state at each node
+                # pprint.pprint(value["keys"], indent=2, width=80, depth=None)
+                pprint.pprint("\n---\n")
+                if key == "generate":
+                    return value["keys"]["generation"]
+        return None
 
 
 
@@ -463,6 +491,14 @@ class RetrievalAgent:
 
 
 
+
+
+
+
+
+
+
+
 if __name__ == "__main__":
 
     # Set environment variables
@@ -480,20 +516,11 @@ if __name__ == "__main__":
 
     CragClass = Crag()
     # Build graph
-    app = CragClass.build_rag_graph()
+    # app = CragClass.build_rag_graph()
 
 
-    # Run
-    inputs = {"keys": {"question": "Who is the teacher of the machine learning course, and how come the highest mountains are located in asia?"}}
-    for output in app.stream(inputs):
-        for key, value in output.items():
-            # Node
-            pprint.pprint(f"Node '{key}':")
-            # Optional: print full state at each node
-            # pprint.pprint(value["keys"], indent=2, width=80, depth=None)
-        pprint.pprint("\n---\n")
-
+    question = "Who is the teacher of the machine learning course, and how come the highest mountains are located in asia?"
+    question = "A sample of sulfur forms crystals when it (A) melts. (B) freezes. (C) evaporates. (D) condenses. The answer should be given as the corresponding letter of the correct answer."
+    answer = CragClass.predict(question=question)
     # Final generation
-    pprint.pprint(value["keys"]["generation"])
-
-
+    pprint.pprint(answer)
