@@ -12,6 +12,9 @@ langchainhub
 openai
 pypdf==4.0.0
 bs4
+human-eval
+langchain-benchmarks
+
 
 # Below versions are not up-to-date, but they are the latest versions that work with the current code
 chromadb==0.4.3
