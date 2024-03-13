@@ -8,7 +8,7 @@ import openai
 import streamlit as st
 
 from thesis2024.datamodules.make_dataset import load_peristent_chroma_store
-from thesis2024.models.agent import create_agent_chain
+from thesis2024.models.coding_agent import create_agent_chain
 
 def get_llm_response(query):
     """Get response from OpenAI's API.
