@@ -284,33 +284,33 @@ class Crag():
 
 
 
-    # def decide_to_generate(self, state):
-    #     """Edge Function: Determine whether to generate an answer or re-generate a question for web search.
+    def decide_to_generate(self, state):
+        """Edge Function: Determine whether to generate an answer or re-generate a question for web search.
 
-    #     Args:
-    #     ----
-    #         state (dict): The current state of the agent, including all keys.
+        Args:
+        ----
+            state (dict): The current state of the agent, including all keys.
 
-    #     Returns:
-    #     -------
-    #         str: Next node to call
+        Returns:
+        -------
+            str: Next node to call
 
-    #     """
-    #     print("---DECIDE TO GENERATE---")
-    #     state_dict = state["keys"]
-    #     question = state_dict["question"]
-    #     filtered_documents = state_dict["documents"]
-    #     search = state_dict["run_web_search"]
+        """
+        print("---DECIDE TO GENERATE---")
+        state_dict = state["keys"]
+        question = state_dict["question"]
+        filtered_documents = state_dict["documents"]
+        search = state_dict["run_web_search"]
 
-    #     if search == "Yes":
-    #         # All documents have been filtered check_relevance
-    #         # We will re-generate a new query
-    #         print("---DECISION: TRANSFORM QUERY and RUN WEB SEARCH---")
-    #         return "transform_query"
-    #     else:
-    #         # We have relevant documents, so generate answer
-    #         print("---DECISION: GENERATE---")
-    #         return "generate"
+        if search == "Yes":
+            # All documents have been filtered check_relevance
+            # We will re-generate a new query
+            print("---DECISION: TRANSFORM QUERY and RUN WEB SEARCH---")
+            return "transform_query"
+        else:
+            # We have relevant documents, so generate answer
+            print("---DECISION: GENERATE---")
+            return "generate"
 
 
     ### Function for building graph
