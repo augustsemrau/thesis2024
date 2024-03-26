@@ -30,7 +30,7 @@ openai==1.9.0
 streamlit==1.30.0
 
 matplotlib==3.8.2
-
+plotly
 
 #torch >= 2.1.2
 #torchvision >= 0.16.2
