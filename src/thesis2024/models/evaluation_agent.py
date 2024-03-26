@@ -4,19 +4,11 @@
 from langchain import hub
 from langchain_core.output_parsers import StrOutputParser
 
-
-
-
 # Local imports
 from thesis2024.utils import GraphState
 
-
-
-
-
 from langchain_openai import ChatOpenAI
 from langchain.chains.question_answering import load_qa_chain
-
 
 import json
 
@@ -32,19 +24,10 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt.tool_executor import ToolExecutor, ToolInvocation
 
-
-
-
-
 from langchain_core.tools import tool
 from typing import Annotated
 from langchain_experimental.utilities import PythonREPL
 from langchain_community.tools.tavily_search import TavilySearchResults
-
-
-
-
-
 
 import operator
 from typing import Annotated, List, Sequence, Tuple, TypedDict, Union
@@ -52,7 +35,6 @@ from typing import Annotated, List, Sequence, Tuple, TypedDict, Union
 from langchain.agents import create_openai_functions_agent
 from langchain.tools.render import format_tool_to_openai_function
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-
 
 from typing_extensions import TypedDict
 
@@ -62,9 +44,9 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     sender: str
 
-
-
 import functools
+
+
 
 
 
