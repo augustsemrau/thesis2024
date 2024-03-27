@@ -21,26 +21,16 @@ class SurrogateUser:
 class YourLLMModel:
     def __init__(self,
                 llm: str = "gpt-3.5-turbo-0125",
-                user_ID: str = "User1",
+                conversation_history: str = None,
                 ):
         self.llm = llm
-        self.user_ID = user_ID
+        self.conversation_history = conversation_history
         self.initiate_agent_system()
 
-    def get_conversation_history(self):
-        """Get the conversation history of the specific user."""
-        # Compile all text files in the given directory
-        user_conversation_history_path = f"data/conversations/{self.user_ID}/"
-        self.conversation_history = []
-        for file in os.listdir(user_conversation_history_path):
-            with open(file, "r") as f:
-                self.conversation_history.append(f.read())
-        return self.conversation_history
 
     def initiate_agent_system(self):
         """Initiate the agent system."""
-        # conversation_history = self.get_conversation_history()
-        # self.model = create_openai_functions_agent(llm=self.llm, conversation_history=conversation_history)
+        # self.model = create_openai_functions_agent(llm=self.llm, conversation_history=self.conversation_history)
         pass
 
     def predict(self, question):
@@ -62,14 +52,25 @@ class MainChat:
     def __init__(self,
                 user_system = SurrogateUser(),
                 agent_system = YourLLMModel(),
-                user_ID: str = "User1",
+                user_id: str = "User1",
                 ):
 
         self.user = user_system
-        self.user_ID = user_ID
-
+        self.user_ID = user_id
+        self.conversation_history = self.get_conversation_history()
         # Initiate agent with the specific user
         self.agent_system = YourLLMModel(user_ID=self.user_ID)
+
+
+    def get_conversation_history(self):
+        """Get the conversation history of the specific user."""
+        # Compile all text files in the given directory
+        user_conversation_history_path = f"data/conversations/{self.user_ID}/"
+        self.conversation_history = []
+        for file in os.listdir(user_conversation_history_path):
+            with open(file, "r") as f:
+                self.conversation_history.append(f.read())
+        return self.conversation_history
 
 
 
@@ -99,7 +100,9 @@ class MainChat:
             turn += 1
             conversation.append("Agent: " + response + "\n")
 
-        while turn < 10:
+
+        """Main conversation loop."""
+        while turn < 10 and response not in ["Q", "q"]:
             # Concat list of strings into one string
             current_conversation = " ".join(conversation[:-1])
 
@@ -111,7 +114,10 @@ class MainChat:
                 response = self.agent_system.predict(conversation[-1] + "Conversation history: " + current_conversation)
                 conversation.append("Agent: " + response + "\n")
                 turn += 1
-            final_conversation = " ".join(conversation[:])
+
+
+        """Concatenate the conversation into one string, then update the conversation history for the specific user."""
+        final_conversation = " ".join(conversation[:])
         print(final_conversation)
 
 
