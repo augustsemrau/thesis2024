@@ -1,21 +1,17 @@
-"""Functions for the agent model."""
+"""This script is esentially the entire Langgraph multi-agent-colaboration example 
+put into a single class.
+Currently, it will only print it's output, and not return it to the main script."""
 
 # LangChain imports
 from langchain import hub
 from langchain_core.output_parsers import StrOutputParser
-
-
+from langchain_openai import ChatOpenAI
+from langchain.chains.question_answering import load_qa_chain
 
 
 # Local imports
 from thesis2024.utils import GraphState
 
-
-
-
-
-from langchain_openai import ChatOpenAI
-from langchain.chains.question_answering import load_qa_chain
 
 
 import json
