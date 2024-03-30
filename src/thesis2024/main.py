@@ -8,7 +8,7 @@ import time
 import os
 
 ## Local imports
-from thesis2024.datamodules.crag import Crag
+from thesis2024.models.crag import Crag
 
 
 
