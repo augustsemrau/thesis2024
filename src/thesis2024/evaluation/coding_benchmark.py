@@ -1,4 +1,0 @@
-"""Benchmark coding performance."""
-
-
-pass
