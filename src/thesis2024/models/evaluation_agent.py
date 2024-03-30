@@ -4,8 +4,6 @@
 from langchain import hub
 from langchain_core.output_parsers import StrOutputParser
 
-# Local imports
-from thesis2024.utils import GraphState
 
 from langchain_openai import ChatOpenAI
 from langchain.chains.question_answering import load_qa_chain

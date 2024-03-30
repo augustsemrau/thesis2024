@@ -9,9 +9,6 @@ from langchain_openai import ChatOpenAI
 from langchain.chains.question_answering import load_qa_chain
 
 
-# Local imports
-from thesis2024.utils import GraphState
-
 
 
 import json

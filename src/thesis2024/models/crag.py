@@ -39,10 +39,18 @@ from langgraph.graph import END, StateGraph
 # Imports for running this file
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
-from thesis2024.utils import GraphState
 
 
+class GraphState(TypedDict):
+    """Represents the state of our graph.
 
+    Attributes
+    ----------
+        keys: A dictionary where each key is a string.
+
+    """
+
+    keys: Dict[str, any]
 
 
 
