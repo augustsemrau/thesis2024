@@ -7,8 +7,26 @@ import os
 import openai
 import streamlit as st
 
-from thesis2024.datamodules.create_vectorstore import load_peristent_chroma_store
-from thesis2024.models.coding_agent import create_agent_chain
+from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
+from langchain.chains.question_answering import load_qa_chain
+from langchain.agents import create_openai_functions_agent
+
+def create_agent_chain():
+    """Create the agent chain.
+
+    :return: Agent chain.
+    """
+    ## Load the QA chain
+    qa_chain = load_qa_chain()
+
+    ## Create the agent chain
+    chain = create_openai_functions_agent(
+        llm="gpt-3.5-turbo-0125",
+        tools=[qa_chain],
+        system_message="system",
+    )
+
+    return chain
 
 def get_llm_response(query):
     """Get response from OpenAI's API.
