@@ -2,10 +2,10 @@
 
 Currently as of Wed 27/3, this script acts as a skeleton for the chatbot interactions."""
 
-import sys
-import pprint
+
 import time
 import os
+import getpass
 
 ## Local imports
 from thesis2024.models.teaching_agent import TeachingAgent
@@ -13,19 +13,52 @@ from thesis2024.models.simulated_student_agent import SimulatedStudentAgent
 from thesis2024.models.assessment_agent import AssessmentAgent
 
 
+def init_llm_langsmith(llm_key = 3):
+    """Initialize the LLM model for LangSmith.
+
+    :param llm_key: Key for the LLM model to use.
+    :return: LLM model name.
+    """
+    # Set environment variables
+    def _set_if_undefined(var: str):
+        if not os.environ.get(var):
+            os.environ[var] = getpass(f"Please provide your {var}")
+    _set_if_undefined("OPENAI_API_KEY")
+    _set_if_undefined("LANGCHAIN_API_KEY")
+    # Add tracing in LangSmith.
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+
+    if llm_key == 3:
+        llm = "gpt-3.5-turbo-0125"
+        os.environ["LANGCHAIN_PROJECT"] = "GPT-3.5 Main System"
+    elif llm_key == 4:
+        llm = "gpt-4-0125-preview"
+        os.environ["LANGCHAIN_PROJECT"] = "GPT-4 Main System"
+    return llm
 
 
-class SurrogateUser:
+class TmpSimulatedStudentAgent:
+    """Placeholder class for the simulated student agent system."""
+
+    def __init__(self,
+            llm: str = "gpt-3.5-turbo-0125",
+            ):
+        """Initialize the simulated student agent system."""
+        self.llm = llm
+
     def predict(self, question):
         # Implement the prediction logic for your LLM model here.
         # For example, sending a request to a model API or using a local model.
         return "What is the time now?"  # Dummy answer, replace with actual prediction logic.
 
-class YourLLMModel:
+class TmpTeachingAgent:
+    """Placeholder class for the teaching agent system."""
+
     def __init__(self,
                 llm: str = "gpt-3.5-turbo-0125",
                 conversation_history: str = None,
                 ):
+        """Initialize the teaching agent system."""
         self.llm = llm
         self.conversation_history = conversation_history
         self.initiate_agent_system()
@@ -44,8 +77,26 @@ class YourLLMModel:
         return str(current_time)  # Dummy answer, replace with actual prediction logic.
 
 
+class TmpAssessmentAgent:
+    """Placeholder class for the assessment agent system."""
 
-class MainChat:
+    def __init__(self,
+                llm: str = "gpt-3.5-turbo-0125",
+                conversation_history: str = None,
+                ):
+        """Initialize the assessment agent system."""
+        self.llm = llm
+        self.conversation_history = conversation_history
+
+    def create_assessment_chain(self):
+        """Create the assessment chain."""
+        # Implement the assessment chain creation logic here.
+        pass
+
+
+
+
+class MainSystem:
     """Main class for user-agent interactions.
 
     This class is responsible for letting the user and the agent interact with each other.
@@ -53,16 +104,17 @@ class MainChat:
     """
 
     def __init__(self,
-                user_system = SurrogateUser(),
-                agent_system = YourLLMModel(),
+                student_system = TmpSimulatedStudentAgent(),
+                teaching_system = TmpTeachingAgent(),
+                assessment_system = TmpAssessmentAgent(),
                 user_id: str = "User1",
+                llm_ver = "gpt-3.5-turbo-0125"
                 ):
-
-        self.user = user_system
-        self.user_ID = user_id
+        """Initialize the main system."""
+        self.student_system = student_system
+        self.agent_system = TmpTeachingAgent(user_ID=user_id)
+        self.assessment_system = assessment_system
         self.conversation_history = self.get_conversation_history()
-        # Initiate agent with the specific user
-        self.agent_system = YourLLMModel(user_ID=self.user_ID)
 
 
     def get_conversation_history(self):
@@ -131,56 +183,20 @@ class MainChat:
 
 
 if __name__ == "__main__":
-    chat = MainChat(user_system=SurrogateUser(), agent_system=YourLLMModel(), user_ID="user_001")
-    chat.run_chat()
 
+    llm = init_llm_langsmith(llm_key=3)
 
+    # chat = MainSystem(student_system=SimulatedStudentAgent(),
+    #                 teaching_system=TeachingAgent(),
+    #                 assessment_system=AssessmentAgent(),
+    #                 user_ID="user_001",
+    #                 llm_ver=llm)
+    main_system_class = MainSystem(student_system=TmpSimulatedStudentAgent(),
+                    teaching_system=TmpTeachingAgent(),
+                    assessment_system=TmpAssessmentAgent(),
+                    user_ID="user_001",
+                    llm_ver=llm)
 
+    main_system_class.run_chat()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # # Build the graph
-    # crag_class = Crag()
-    # app = crag_class.build_rag_graph()
-    # print(app)
-    # # Run the graph
-    #     # Run
-    # inputs = {"keys": {"question": "Who is the teacher of the machine learning course, and how come the highest mountains are located in asia?"}}
-    # for output in app.stream(inputs):
-    #     for key, value in output.items():
-    #         # Node
-    #         pprint.pprint(f"Node '{key}':")
-    #         # Optional: print full state at each node
-    #         # pprint.pprint(value["keys"], indent=2, width=80, depth=None)
-    #     pprint.pprint("\n---\n")
-
-    # # Final generation
-    # pprint.pprint(value["keys"]["generation"])
-
-    # print("Graph run complete.")
-    # # sys.exit(0)
 
