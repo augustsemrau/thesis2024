@@ -70,7 +70,7 @@ dl_02456_outline = ("Course Outline week 1-8: "
 
 
 class AssessorAgent:
-    """Multi-Agent coding LangGraph model."""
+    """Class for Assessment Agent System."""
 
     def __init__(self, llm: str="gpt-3.5-turbo-0125",
                  course_name: str = "Deep Learning",
