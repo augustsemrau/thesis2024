@@ -69,7 +69,7 @@ dl_02456_outline = ("Course Outline week 1-8: "
 
 
 
-class AssessorAgent:
+class AssessmentAgent:
     """Class for Assessment Agent System."""
 
     def __init__(self, llm: str="gpt-3.5-turbo-0125",
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     llm = init_llm_langsmith(llm_key=4)
 
 
-    AssessmentClass = AssessorAgent(llm=llm,
+    AssessmentClass = AssessmentAgent(llm=llm,
                                         course_name=dl_02456_name,
                                         course_description=dl_02456_desc,
                                         course_learning_objectives=dl_02456_lo,
