@@ -8,7 +8,10 @@ import time
 import os
 
 ## Local imports
-from thesis2024.models.crag import Crag
+from thesis2024.models.teaching_agent import TeachingAgent
+from thesis2024.models.simulated_student_agent import SimulatedStudentAgent
+from thesis2024.models.assessment_agent import AssessmentAgent
+
 
 
 
