@@ -21,10 +21,10 @@ def init_llm_langsmith(llm_key = 3):
 
     if llm_key == 3:
         llm = "gpt-3.5-turbo-0125"
-        os.environ["LANGCHAIN_PROJECT"] = "GPT-3.5 Assessor Agent"
+        os.environ["LANGCHAIN_PROJECT"] = "GPT-3.5 Assessment Agent"
     elif llm_key == 4:
         llm = "gpt-4-0125-preview"
-        os.environ["LANGCHAIN_PROJECT"] = "GPT-4 Assessor Agent"
+        os.environ["LANGCHAIN_PROJECT"] = "GPT-4 Assessment Agent"
     return llm
 
 
