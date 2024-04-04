@@ -48,6 +48,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 
 from typing_extensions import TypedDict
+import functools
 
 # This defines the object that is passed between each node
 # in the graph. We will create different nodes for each agent and tool
@@ -57,7 +58,6 @@ class AgentState(TypedDict):
 
 
 
-import functools
 
 
 
@@ -264,13 +264,5 @@ if __name__ == "__main__":
 
     coding_graph = coding_class.instanciate_graph()
     print(coding_graph)
-
-
-
-
-
-
-
-
 
 
