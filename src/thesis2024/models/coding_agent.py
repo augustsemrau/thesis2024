@@ -1,36 +1,35 @@
-"""This script is esentially the entire Langgraph multi-agent-colaboration example 
+"""Code generation multi-agent model.
+
+This script is esentially the entire Langgraph multi-agent-colaboration example 
 put into a single class.
-Currently, it will only print it's output, and not return it to the main script."""
+Currently, it will only print it's output, and not return it to the main script.
+"""
 
-
+# Basic imports
 import os
 import getpass
+import operator
+import json
+from typing import Annotated, Sequence, TypedDict
 
+# Lanchain imports
 from langchain_openai import ChatOpenAI
 from langchain.chains.question_answering import load_qa_chain
-
-
-import json
-
-from langchain_core.messages import (AIMessage,
-                                    BaseMessage,
-                                    ChatMessage,
-                                    FunctionMessage,
-                                    HumanMessage,
-)
-from langchain.tools.render import format_tool_to_openai_function
+from langchain_core.messages import BaseMessage, FunctionMessage,HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+
+# Tool imports
+import functools
+from langchain.tools.render import format_tool_to_openai_function
+from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_core.tools import tool
+from langchain_experimental.utilities import PythonREPL
+
+# Langgraph imports
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt.tool_executor import ToolExecutor, ToolInvocation
 
-from langchain_core.tools import tool
-from langchain_experimental.utilities import PythonREPL
-from langchain_community.tools.tavily_search import TavilySearchResults
-import functools
-
-
-import operator
-from typing import Annotated, List, Sequence, Tuple, TypedDict, Union
 
 
 
@@ -49,9 +48,9 @@ class AgentState(TypedDict):
 class CodingMultiAgent:
     """Multi-Agent coding LangGraph model."""
 
-    def __init__(self, llm: str="gpt-3.5-turbo-0125"):
+    def __init__(self, llm_model):
         """Initialize the MultiAgent class."""
-        self.llm = llm
+        self.llm = llm_model
         return None
 
     # Helper functions
@@ -244,8 +243,31 @@ class CodingMultiAgent:
 
 if __name__ == "__main__":
 
-    coding_class = CodingMultiAgent(llm="gpt-3.5-turbo-0125")
+    def init_llm_langsmith(llm_key = 3, temp = 0.5):
+        """Initialize the LLM model and LangSmith tracing."""
+        # Set environment variables
+        def _set_if_undefined(var: str):
+            if not os.environ.get(var):
+                os.environ[var] = getpass(f"Please provide your {var}")
+        _set_if_undefined("OPENAI_API_KEY")
+        _set_if_undefined("LANGCHAIN_API_KEY")
 
+        # Add tracing in LangSmith.
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        if llm_key == 3:
+            llm_ver = "gpt-3.5-turbo-0125"
+            os.environ["LANGCHAIN_PROJECT"] = "GPT-3.5 Teaching Agent System TEST 1"
+        elif llm_key == 4:
+            llm_ver = "gpt-4-0125-preview"
+            os.environ["LANGCHAIN_PROJECT"] = "GPT-4 Teaching Agent System TEST 1"
+
+        llm_model = ChatOpenAI(model_name=llm_ver, temperature=temp)
+        return llm_model
+
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5)
+
+
+    coding_class = CodingMultiAgent(llm_model=llm_model)
     coding_graph = coding_class.instanciate_graph()
     print(coding_graph)
 
