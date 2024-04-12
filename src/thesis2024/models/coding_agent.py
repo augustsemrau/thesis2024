@@ -67,6 +67,8 @@ class CodingMultiAgent:
                     " will help where you left off. Execute what you can to make progress."
                     " If you or any of the other assistants have the final answer or deliverable,"
                     " prefix your response with FINAL ANSWER so the team knows to stop."
+                    " If another assistant says thank you, or asks if you have more questions,"
+                    " that means the task is done, and you MUST respond with FINAL ANSWER."
                     " You have access to the following tools: {tool_names}.\n{system_message}",
                 ),
                 MessagesPlaceholder(variable_name="messages"),
