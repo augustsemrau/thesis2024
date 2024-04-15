@@ -1,7 +1,3 @@
-# Basic imports
-import os
-import getpass
-
 # Langchain imports
 from langchain import hub
 from langchain.agents import AgentExecutor, Tool, create_react_agent
@@ -16,14 +12,12 @@ from langchain.utilities import DuckDuckGoSearchAPIWrapper
 
 # Local imports
 from thesis2024.models.coding_agent import CodingMultiAgent
-
+from thesis2024.utils import init_llm_langsmith
 
 
 
 class TAS:
-    def init(self,
-             llm_model,
-             version: str):
+    def __init__(self, llm_model):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
         self.agent_prompt = self.build_agent_prompt()
@@ -56,7 +50,7 @@ class TAS:
         """
         tools = []  # NO TOOLS FOR v0
         tas_v0_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
+        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v0_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 
@@ -75,11 +69,11 @@ class TAS:
                         )
 
 
+
+
         tools = [search_tool]
-
-
         tas_v1_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
+        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v1_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 
@@ -90,11 +84,12 @@ class TAS:
 
         This version of the TAS is agenic, and uses complex tools such as other agents.
         """
+
+
+
         tools = []
-
-
         tas_v2_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
+        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v2_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 
@@ -105,11 +100,24 @@ class TAS:
 
         This version of the TAS is agenic, and uses very complex tools such as multi-agent systems.
         """
-        tools = []
+        """Coding multi-agent as a tool."""
+        coding_subgraph_class = CodingMultiAgent(llm_model=self.llm_model)
+        coding_graph = coding_subgraph_class.instanciate_graph()
+        def coding_function(query: str):
+            """Coding tool function."""
+            output = coding_graph.invoke({"messages": [HumanMessage(content=query)]},
+                                        {"recursion_limit": 100})
+            return output["messages"][-1].content
+        coding_multiagent = StructuredTool.from_function(
+                                    func=coding_function,
+                                    name="Coding Tool",
+                                    description="Useful when you need to answer questions using a coded example."
+                                    )
 
 
+        tools = [coding_multiagent]
         tas_v3_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
+        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v3_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 
@@ -120,42 +128,10 @@ class TAS:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
-    def init_llm_langsmith(llm_key = 3, temp = 0.5):
-        """Initialize the LLM model and LangSmith tracing."""
-        # Set environment variables
-        def _set_if_undefined(var: str):
-            if not os.environ.get(var):
-                os.environ[var] = getpass(f"Please provide your {var}")
-        _set_if_undefined("OPENAI_API_KEY")
-        _set_if_undefined("LANGCHAIN_API_KEY")
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="TAS TEST 1")
 
-        # Add tracing in LangSmith.
-        os.environ["LANGCHAIN_TRACING_V2"] = "true"
-        if llm_key == 3:
-            llm_ver = "gpt-3.5-turbo-0125"
-        elif llm_key == 4:
-            llm_ver = "gpt-4-0125-preview"
-        os.environ["LANGCHAIN_PROJECT"] = str(llm_ver + "Temp: " + temp + " TAS TEST 1")
+    tas = TAS(llm_model=llm_model)
+    tas_v0 = tas.build_tas_v0()
 
-        llm_model = ChatOpenAI(model_name=llm_ver, temperature=temp)
-        return llm_model
-
-    llm_model = init_llm_langsmith(llm_key=3, temp=0)
-    # tools = []
+    print(tas_v0.invoke({"input": "Hello I am August?",}))#["output"]
