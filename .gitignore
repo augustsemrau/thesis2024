@@ -182,4 +182,7 @@ notebook_00.ipynb
 data/
 notebooks/external_notebooks
 DLAI_Courses
+
+# Chainlit
 .chainlit
+.files
