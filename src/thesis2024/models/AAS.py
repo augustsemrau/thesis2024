@@ -1,31 +1,13 @@
-"""Module for the assessment agent system."""
+"""Module containing the Assessment Agent System (AAS)."""
 
-import os
-import getpass
 
 # LangChain imports
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
-
-def init_llm_langsmith(llm_key = 3):
-    # Set environment variables
-    def _set_if_undefined(var: str):
-        if not os.environ.get(var):
-            os.environ[var] = getpass(f"Please provide your {var}")
-    _set_if_undefined("OPENAI_API_KEY")
-    _set_if_undefined("LANGCHAIN_API_KEY")
-    # Add tracing in LangSmith.
-    os.environ["LANGCHAIN_TRACING_V2"] = "true"
-
-    if llm_key == 3:
-        llm = "gpt-3.5-turbo-0125"
-        os.environ["LANGCHAIN_PROJECT"] = "GPT-3.5 Assessment Agent"
-    elif llm_key == 4:
-        llm = "gpt-4-0125-preview"
-        os.environ["LANGCHAIN_PROJECT"] = "GPT-4 Assessment Agent"
-    return llm
+# Local Imports
+from thesis2024.utils import init_llm_langsmith
 
 
 dl_02456_name = "Deep Learning"
@@ -69,16 +51,16 @@ dl_02456_outline = ("Course Outline week 1-8: "
 
 
 
-class AssessmentAgent:
+class AAS:
     """Class for Assessment Agent System."""
 
-    def __init__(self, llm: str="gpt-3.5-turbo-0125",
+    def __init__(self, llm_model,
                  course_name: str = "Deep Learning",
                  course_description: str = "",
                  course_learning_objectives: str = "",
                  course_outline: str = ""):
         """Initialize the Assessor Agent class."""
-        self.model = ChatOpenAI(model_name=llm, temperature=0.5)
+        self.llm_model = llm_model
         self.course_name=course_name
         self.course_description=course_description
         self.course_learning_objectives=course_learning_objectives
@@ -125,7 +107,7 @@ class AssessmentAgent:
                     input_variables=["feedback"]
         )
 
-        summary_chain = ({"feedback": assessment_chain} | summary_prompt | self.model | StrOutputParser())
+        summary_chain = ({"feedback": assessment_chain} | summary_prompt | self.llm_model | StrOutputParser())
 
         return summary_chain
 
@@ -137,14 +119,14 @@ class AssessmentAgent:
 if __name__ == "__main__":
 
 
-    llm = init_llm_langsmith(llm_key=4)
+    llm_model = llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="AAS TEST 1")
 
 
-    AssessmentClass = AssessmentAgent(llm=llm,
-                                        course_name=dl_02456_name,
-                                        course_description=dl_02456_desc,
-                                        course_learning_objectives=dl_02456_lo,
-                                        course_outline=dl_02456_outline)
+    AAS_class = AAS(llm_model=llm_model,
+                                    course_name=dl_02456_name,
+                                    course_description=dl_02456_desc,
+                                    course_learning_objectives=dl_02456_lo,
+                                    course_outline=dl_02456_outline)
 
     short_conversation = ("Student: Hello \n"
     " Teacher: Hello, how are you? \n"
@@ -173,7 +155,7 @@ if __name__ == "__main__":
     # Agent: You're welcome! If you have any more questions or need further assistance, feel free to ask."""
 
 
-    assessor_agent_chain = AssessmentClass.create_assessment_chain()
+    assessor_agent_chain = AAS_class.create_assessment_chain()
     summarized_assessment = assessor_agent_chain.invoke({"conversation": short_conversation})
     print("\n")
     print(summarized_assessment)
