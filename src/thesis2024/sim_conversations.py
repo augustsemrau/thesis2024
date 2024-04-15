@@ -9,7 +9,7 @@ import getpass
 
 ## Local imports
 from thesis2024.models.teaching_agent import TeachingAgent
-from thesis2024.models.simulated_student_agent import SimulatedStudentAgent
+from thesis2024.models.SSA import SimulatedStudentAgent
 from thesis2024.models.assessment_agent import AssessmentAgent
 
 
