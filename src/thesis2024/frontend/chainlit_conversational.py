@@ -2,11 +2,14 @@
 import chainlit as cl
 from thesis2024.utils import init_llm_langsmith
 from thesis2024.TAS import TAS
+from thesis2024.models.SSA import SSA
 
+
+"""Chainlit testing of the TAS."""
 @cl.on_chat_start
 def main():
     """Instantiate required classes for the user session."""
-    llm_chat = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="CHAINLIT TEST 1")
+    llm_chat = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="CHAINLIT TAS TEST 1")
     tas = TAS(llm_model=llm_chat)
     tas_v0 = tas.build_tas_v0()
     cl.user_session.set("tas", tas_v0)
@@ -17,6 +20,24 @@ async def main(message: str):
     tas = cl.user_session.get("tas")
     res = await tas.ainvoke({"input": message.content,}, callbacks=[cl.AsyncLangchainCallbackHandler()])
     await cl.Message(content=res["output"]).send()
+
+
+"""Chainlit testing of the SSA."""
+# @cl.on_chat_start
+# def main():
+#     """Instantiate required classes for the user session."""
+#     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="CHAINLIT SSA TEST 1")
+#     ssa = SSA(llm_model=llm_model)
+#     ssa_v0 = ssa.build_ssa_v0()
+#     cl.user_session.set("ssa", ssa_v0)
+
+# @cl.on_message
+# async def main(message: str):
+#     """Call the TAS asynchronously and send the response to the user."""
+#     ssa = cl.user_session.get("ssa")
+#     res = await ssa.ainvoke({"input": message.content,}, callbacks=[cl.AsyncLangchainCallbackHandler()])
+#     await cl.Message(content=res["text"]).send()
+
 
 # To run (from thesis2024/src/thesis2024/)
 # chainlit run frontend/chainlit_conversational.py -w --port 7097
