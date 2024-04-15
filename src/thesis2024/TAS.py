@@ -1,3 +1,5 @@
+"""Teaching Agent System (TAS) for the thesis2024 project."""
+
 # Langchain imports
 from langchain import hub
 from langchain.agents import AgentExecutor, Tool, create_react_agent
@@ -17,13 +19,15 @@ from thesis2024.utils import init_llm_langsmith
 
 
 class TAS:
+    """Class for the Teaching Agent System."""
+
     def __init__(self, llm_model):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
-        self.agent_prompt = self.build_agent_prompt()
+        self.tas_prompt = self.build_tas_prompt()
 
 
-    def build_agent_prompt(self):
+    def build_tas_prompt(self):
         """Build the agent prompt."""
         system_message = """You will interact with a student who has no prior knowledge of the subject."""
         course = """Introduction to Computer Science"""
@@ -35,7 +39,7 @@ class TAS:
         return prompt
 
 
-    def build_baseline(self):
+    def build_nonagenic_baseline(self):
         """Build the baseline Teaching Agent System."""
         prompt = "You are a teaching assistant. You are responsible for answering questions related to the course material."
         chain = self.llm_model | prompt
@@ -50,7 +54,7 @@ class TAS:
         """
         tools = []  # NO TOOLS FOR v0
         tas_v0_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
+        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v0_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 
@@ -73,7 +77,7 @@ class TAS:
 
         tools = [search_tool]
         tas_v1_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
+        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v1_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 
@@ -89,7 +93,7 @@ class TAS:
 
         tools = []
         tas_v2_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
+        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v2_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 
@@ -117,7 +121,7 @@ class TAS:
 
         tools = [coding_multiagent]
         tas_v3_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.agent_prompt, output_parser=None)
+        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v3_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 

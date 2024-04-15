@@ -32,7 +32,7 @@ def init_llm_langsmith(llm_key = 3, temp = 0.5, langsmith_name: str = ""):
         llm_ver = "gpt-3.5-turbo-0125"
     elif llm_key == 4:
         llm_ver = "gpt-4-0125-preview"
-    os.environ["LANGCHAIN_PROJECT"] = llm_ver + "Temp: " + str(temp) + " " + langsmith_name
+    os.environ["LANGCHAIN_PROJECT"] = llm_ver + "_Temp: " + str(temp) + "_" + langsmith_name
 
     llm_model = ChatOpenAI(model_name=llm_ver, temperature=temp)
     return llm_model
