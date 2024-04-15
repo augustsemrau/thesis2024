@@ -21,10 +21,21 @@ from thesis2024.utils import init_llm_langsmith
 class TAS:
     """Class for the Teaching Agent System."""
 
-    def __init__(self, llm_model):
+    def __init__(self,
+                 llm_model,
+                 version: str = "v0"):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
         self.tas_prompt = self.build_tas_prompt()
+
+        if version == "v0":
+            self.tas_executor = self.build_tas_v0()
+        elif version == "v1":
+            self.tas_executor = self.build_tas_v1()
+        elif version == "v2":
+            self.tas_executor = self.build_tas_v2()
+        elif version == "v3":
+            self.tas_executor = self.build_tas_v3()
 
 
     def build_tas_prompt(self):
@@ -124,6 +135,12 @@ class TAS:
         tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v3_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
+
+    def predict(self, query):
+        """Invoke the Teaching Agent System."""
+        response = self.tas_executor.invoke({"input": query})["output"]
+        return response
+
 
 
 

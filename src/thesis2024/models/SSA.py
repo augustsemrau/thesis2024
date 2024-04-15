@@ -14,11 +14,15 @@ from thesis2024.utils import init_llm_langsmith
 class SSA:
     """Class for the simulated student agent system."""
 
-    def __init__(self, llm_model):
+    def __init__(self,
+                 llm_model,
+                 version: str = "v0"):
         """Initialize the Assessor Agent class."""
         self.llm_model = llm_model
         self.ssa_prompt = self.build_ssa_prompt()
-        return None
+
+        if version == "v0":
+            self.ssa_executor = self.build_ssa_v0()
 
     def build_ssa_prompt(self):
         """Build the agent prompt."""
@@ -52,6 +56,12 @@ You will never write more than 3 sentences at a time."""
                                 #output_parser=BaseLLMOutputParser(),
                                 verbose=False,)
         return ssa_v0_chain
+
+    def predict(self, query):
+        """Invoke the Teaching Agent System."""
+        response = self.ssa_executor.invoke({"input": query})["text"]
+        return response
+
 
 
 
