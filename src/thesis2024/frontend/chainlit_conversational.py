@@ -18,3 +18,5 @@ async def main(message: str):
     res = await tas.ainvoke({"input": message.content,}, callbacks=[cl.AsyncLangchainCallbackHandler()])
     await cl.Message(content=res["output"]).send()
 
+# To run (from thesis2024/src/thesis2024/)
+# chainlit run frontend/chainlit_conversational.py -w --port 7097
