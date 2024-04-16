@@ -10,11 +10,15 @@ from langchain_core.messages import HumanMessage
 
 # Tool imports
 from langchain.tools import StructuredTool
-from langchain.utilities import DuckDuckGoSearchAPIWrapper
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+from langchain_core.tools import tool
+from typing import Annotated
+from langchain_experimental.utilities import PythonREPL
 
 # Local imports
-from thesis2024.models.coding_agent import CodingMultiAgent
 from thesis2024.utils import init_llm_langsmith
+from thesis2024.models.coding_agent import CodingMultiAgent
+from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
 
 
@@ -56,8 +60,6 @@ class TAS:
         chain = self.llm_model | prompt
         return chain
 
-
-
     def build_tas_v0(self):
         """Build the Teaching Agent System version 0.
 
@@ -69,30 +71,64 @@ class TAS:
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v0_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
 
-
-
     def build_tas_v1(self):
         """Build the Teaching Agent System version 1.
 
         This version of the TAS is agenic, and has simple tools.
         """
-        """Search tool."""
-        search = DuckDuckGoSearchAPIWrapper()
-        search_tool = Tool(name="Current Search",
-                        func=search.run,
-                        description="Useful when you need to answer questions about nouns, current events or the current state of the world."
-                        )
 
+        def build_search_tool():
+            """Build the search tool."""
+            search = DuckDuckGoSearchAPIWrapper()
+            search_tool = Tool(name="Current Search",
+                            func=search.run,
+                            description="Useful when you need to answer questions about nouns, current events or the current state of the world."
+                            )
+            return search_tool
 
+        def build_retrieval_tool():
+            """Build the retrieval tool."""
+            chroma_instance = load_peristent_chroma_store(openai_embedding=True, 
+                                                          vectorstore_path="data/processed/chroma")
+            def retrieval_function(query: str):
+                docs = chroma_instance.similarity_search(query, k = 1)
+                return docs[0].page_content
+            retrieval_tool = StructuredTool.from_function(
+                                name="Retrieval Tool",
+                                func=retrieval_function,
+                                description="Useful when you need to answer questions using relevant course material."
+                                )
+            return retrieval_tool
 
+        ## Coding tool should work, but is not implemented as it is not currently sandboxed correctly.
+        def build_coding_tool():
+            """Build a coding tool."""
+            repl = PythonREPL()
+            def python_repl(
+                code: Annotated[str, "The python code to execute to generate whatever fits the user needs."]
+            ):
+                """Use this to execute python code.
 
-        tools = [search_tool]
+                If you want to see the output of a value,
+                you should print it out with `print(...)`. This is visible to the user.
+                """
+                try:
+                    result = repl.run(code)
+                except BaseException as e:
+                    return f"Failed to execute. Error: {repr(e)}"
+                return f"Succesfully executed:\n```python\n{code}\n```\nStdout: {result}"
+            coding_tool = StructuredTool.from_function(
+                                name="Coding Tool",
+                                func=python_repl,
+                                description="Useful when you need to answer questions using code."
+                                )
+            return coding_tool
+
+        tools = [build_search_tool(), build_retrieval_tool()]#, build_coding_tool()]
         tas_v1_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
         tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v1_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
-
-
 
     def build_tas_v2(self):
         """Build the Teaching Agent System version 2.
@@ -107,8 +143,6 @@ class TAS:
         tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v2_memory, verbose=True, handle_parsing_errors=True)
         return tas_agent_executor
-
-
 
     def build_tas_v3(self):
         """Build the Teaching Agent System version 3.
@@ -150,9 +184,8 @@ class TAS:
 
 
 if __name__ == '__main__':
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="TAS TEST 1")
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="TAS v1 TEST 1")
 
-    tas = TAS(llm_model=llm_model)
-    tas_v0 = tas.build_tas_v0()
+    tas = TAS(llm_model=llm_model, version="v1")
 
-    print(tas_v0.invoke({"input": "Hello I am August?",}))#["output"]
+    print(tas.predict("Take a topic related to linear regression from the course material, and code an example for me."))#["output"]
