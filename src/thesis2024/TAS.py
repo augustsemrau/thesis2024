@@ -124,15 +124,22 @@ class TAS:
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
         self.tas_prompt = self.build_tas_prompt()
+        self.build_executor(ver=version)
 
-        if version == "v0":
+    def build_executor(self, ver):
+        """Build the Teaching Agent System executor."""
+        self.agenic = True
+        if ver == "v0":
             self.tas_executor = self.build_tas_v0()
-        elif version == "v1":
+        elif ver == "v1":
             self.tas_executor = self.build_tas_v1()
-        elif version == "v2":
+        elif ver == "v2":
             self.tas_executor = self.build_tas_v2()
-        elif version == "v3":
+        elif ver == "v3":
             self.tas_executor = self.build_tas_v3()
+        else:
+            self.tas_executor = self.build_nonagenic_baseline()
+            self.agenic = False
 
 
     def build_tas_prompt(self):
@@ -196,7 +203,9 @@ class TAS:
 
         This version of the TAS is agenic, and uses complex tools such as other agents.
         """
-
+        agent_class = AgentClass(llm_model=self.llm_model)
+        search_agent = agent_class.build_search_agent()
+        tools = [search_agent]
 
 
         tools = []
@@ -235,7 +244,10 @@ class TAS:
 
     def predict(self, query):
         """Invoke the Teaching Agent System."""
-        response = self.tas_executor.invoke({"input": query})["output"]
+        if not self.agenic:
+            response = self.tas_executor.invoke({"input": query})["text"]
+        else:
+            response = self.tas_executor.invoke({"input": query})["output"]
         return response
 
 
@@ -251,4 +263,4 @@ if __name__ == '__main__':
 
     tas = TAS(llm_model=llm_model, version="v1")
 
-    print(tas.predict("Take a topic related to linear regression from the course material, and code an example for me."))#["output"]
+    print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
