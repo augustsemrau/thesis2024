@@ -7,7 +7,7 @@ from langchain_openai import OpenAIEmbeddings
 
 
 
-def load_peristent_chroma_store(openai_embedding, vectorstore_path="data/processed/chroma"):
+def load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/processed/chroma"):
     """Load a persistent Chroma vector store.
 
     :param persist_path: Path to the persistent Chroma vector store.
