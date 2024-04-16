@@ -21,7 +21,100 @@ from thesis2024.models.coding_agent import CodingMultiAgent
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
 
+"""Tools for the Teaching Agent System (TAS) v1."""
+class ToolClass:
+    """Class for the tools in the Teaching Agent System."""
 
+    def __init__(self):
+        """Initialize the tool class."""
+        pass
+
+    def build_search_tool(self):
+        """Build the search tool."""
+        search = DuckDuckGoSearchAPIWrapper()
+        search_tool = Tool(name="Current Search",
+                        func=search.run,
+                        description="Useful when you need to answer questions about nouns, current events or the current state of the world."
+                        )
+        return search_tool
+
+    def build_retrieval_tool(self):
+        """Build the retrieval tool."""
+        chroma_instance = load_peristent_chroma_store(openai_embedding=True,
+                                                        vectorstore_path="data/processed/chroma")
+        def retrieval_function(query: str):
+            docs = chroma_instance.similarity_search(query, k = 1)
+            return docs[0].page_content
+        retrieval_tool = StructuredTool.from_function(
+                            name="Retrieval Tool",
+                            func=retrieval_function,
+                            description="Useful when you need to answer questions using relevant course material."
+                            )
+        return retrieval_tool
+
+    ## Coding tool should work, but is not implemented as it is not currently sandboxed correctly.
+    def build_coding_tool(self):
+        """Build a coding tool."""
+        repl = PythonREPL()
+        def python_repl(
+            code: Annotated[str, "The python code to execute to generate whatever fits the user needs."]
+        ):
+            """Use this to execute python code.
+
+            If you want to see the output of a value,
+            you should print it out with `print(...)`. This is visible to the user.
+            """
+            try:
+                result = repl.run(code)
+            except BaseException as e:
+                return f"Failed to execute. Error: {repr(e)}"
+            return f"Succesfully executed:\n```python\n{code}\n```\nStdout: {result}"
+        coding_tool = StructuredTool.from_function(
+                            name="Coding Tool",
+                            func=python_repl,
+                            description="Useful when you need to answer questions using code."
+                            )
+        return coding_tool
+
+"""Agents for the Teaching Agent System (TAS) v2."""
+class AgentClass:
+    """Class for the agents used in the Teaching Agent System."""
+
+    def __init__(self):
+        """Initialize the agent class."""
+        pass
+
+    def build_search_agent(self):
+        """Build the search agent."""
+        search_agent = 1
+        return search_agent
+
+"""Multi-Agent systems for the Teaching Agent System (TAS) v3."""
+class MultiAgentClass:
+    """Class for the multi-agent systems used in the Teaching Agent System."""
+
+    def __init__(self, llm_model):
+        """Initialize the agent class."""
+        self.llm_model = llm_model
+
+
+    def build_coding_multi_agent(self):
+        """Coding multi-agent as a tool."""
+        coding_subgraph_class = CodingMultiAgent(llm_model=self.llm_model)
+        coding_graph = coding_subgraph_class.instanciate_graph()
+        def coding_function(query: str):
+            """Coding tool function."""
+            output = coding_graph.invoke({"messages": [HumanMessage(content=query)]},
+                                        {"recursion_limit": 100})
+            return output["messages"][-1].content
+        coding_multiagent = StructuredTool.from_function(
+                                    func=coding_function,
+                                    name="Coding Tool",
+                                    description="Useful when you need to answer questions using a coded example."
+                                    )
+        return coding_multiagent
+
+"""Teaching Agent System (TAS) for the thesis2024 project."""
 class TAS:
     """Class for the Teaching Agent System."""
 
@@ -67,8 +160,15 @@ class TAS:
         """
         tools = []  # NO TOOLS FOR v0
         tas_v0_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
-        tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v0_memory, verbose=True, handle_parsing_errors=True)
+        tas_agent = create_react_agent(llm=self.llm_model,
+                                       tools=tools,
+                                       prompt=self.tas_prompt,
+                                       output_parser=None)
+        tas_agent_executor = AgentExecutor(agent=tas_agent,
+                                           tools=tools,
+                                           memory=tas_v0_memory,
+                                           verbose=True,
+                                           handle_parsing_errors=True)
         return tas_agent_executor
 
     def build_tas_v1(self):
@@ -76,58 +176,19 @@ class TAS:
 
         This version of the TAS is agenic, and has simple tools.
         """
+        tool_class = ToolClass()
+        tools = [tool_class.build_search_tool(), tool_class.build_retrieval_tool()]#, tool_class.build_coding_tool()]
 
-        def build_search_tool():
-            """Build the search tool."""
-            search = DuckDuckGoSearchAPIWrapper()
-            search_tool = Tool(name="Current Search",
-                            func=search.run,
-                            description="Useful when you need to answer questions about nouns, current events or the current state of the world."
-                            )
-            return search_tool
-
-        def build_retrieval_tool():
-            """Build the retrieval tool."""
-            chroma_instance = load_peristent_chroma_store(openai_embedding=True, 
-                                                          vectorstore_path="data/processed/chroma")
-            def retrieval_function(query: str):
-                docs = chroma_instance.similarity_search(query, k = 1)
-                return docs[0].page_content
-            retrieval_tool = StructuredTool.from_function(
-                                name="Retrieval Tool",
-                                func=retrieval_function,
-                                description="Useful when you need to answer questions using relevant course material."
-                                )
-            return retrieval_tool
-
-        ## Coding tool should work, but is not implemented as it is not currently sandboxed correctly.
-        def build_coding_tool():
-            """Build a coding tool."""
-            repl = PythonREPL()
-            def python_repl(
-                code: Annotated[str, "The python code to execute to generate whatever fits the user needs."]
-            ):
-                """Use this to execute python code.
-
-                If you want to see the output of a value,
-                you should print it out with `print(...)`. This is visible to the user.
-                """
-                try:
-                    result = repl.run(code)
-                except BaseException as e:
-                    return f"Failed to execute. Error: {repr(e)}"
-                return f"Succesfully executed:\n```python\n{code}\n```\nStdout: {result}"
-            coding_tool = StructuredTool.from_function(
-                                name="Coding Tool",
-                                func=python_repl,
-                                description="Useful when you need to answer questions using code."
-                                )
-            return coding_tool
-
-        tools = [build_search_tool(), build_retrieval_tool()]#, build_coding_tool()]
         tas_v1_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
-        tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v1_memory, verbose=True, handle_parsing_errors=True)
+        tas_agent = create_react_agent(llm=self.llm_model,
+                                       tools=tools,
+                                       prompt=self.tas_prompt,
+                                       output_parser=None)
+        tas_agent_executor = AgentExecutor(agent=tas_agent,
+                                           tools=tools,
+                                           memory=tas_v1_memory,
+                                           verbose=True,
+                                           handle_parsing_errors=True)
         return tas_agent_executor
 
     def build_tas_v2(self):
@@ -140,8 +201,15 @@ class TAS:
 
         tools = []
         tas_v2_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
-        tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v2_memory, verbose=True, handle_parsing_errors=True)
+        tas_agent = create_react_agent(llm=self.llm_model,
+                                       tools=tools,
+                                       prompt=self.tas_prompt,
+                                       output_parser=None)
+        tas_agent_executor = AgentExecutor(agent=tas_agent,
+                                           tools=tools,
+                                           memory=tas_v2_memory,
+                                           verbose=True,
+                                           handle_parsing_errors=True)
         return tas_agent_executor
 
     def build_tas_v3(self):
@@ -149,25 +217,20 @@ class TAS:
 
         This version of the TAS is agenic, and uses very complex tools such as multi-agent systems.
         """
-        """Coding multi-agent as a tool."""
-        coding_subgraph_class = CodingMultiAgent(llm_model=self.llm_model)
-        coding_graph = coding_subgraph_class.instanciate_graph()
-        def coding_function(query: str):
-            """Coding tool function."""
-            output = coding_graph.invoke({"messages": [HumanMessage(content=query)]},
-                                        {"recursion_limit": 100})
-            return output["messages"][-1].content
-        coding_multiagent = StructuredTool.from_function(
-                                    func=coding_function,
-                                    name="Coding Tool",
-                                    description="Useful when you need to answer questions using a coded example."
-                                    )
+        multi_agent_class = MultiAgentClass(llm_model=self.llm_model)
+        coding_multi_agent = multi_agent_class.build_coding_multi_agent()
+        tools = [coding_multi_agent]
 
-
-        tools = [coding_multiagent]
         tas_v3_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        tas_agent = create_react_agent(llm=self.llm_model, tools=tools, prompt=self.tas_prompt, output_parser=None)
-        tas_agent_executor = AgentExecutor(agent=tas_agent, tools=tools, memory=tas_v3_memory, verbose=True, handle_parsing_errors=True)
+        tas_agent = create_react_agent(llm=self.llm_model,
+                                       tools=tools,
+                                       prompt=self.tas_prompt,
+                                       output_parser=None)
+        tas_agent_executor = AgentExecutor(agent=tas_agent,
+                                           tools=tools,
+                                           memory=tas_v3_memory,
+                                           verbose=True,
+                                           handle_parsing_errors=True)
         return tas_agent_executor
 
     def predict(self, query):
