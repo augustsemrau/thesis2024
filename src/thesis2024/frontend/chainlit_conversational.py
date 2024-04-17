@@ -9,17 +9,20 @@ from thesis2024.models.SSA import SSA
 @cl.on_chat_start
 def main():
     """Instantiate required classes for the user session."""
-    llm_chat = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="CHAINLIT TAS TEST 1")
-    tas = TAS(llm_model=llm_chat)
-    tas_v0 = tas.build_tas_v0()
-    cl.user_session.set("tas", tas_v0)
+    version = "v1"
+    langsmith_name = "Chainlit Conversation 1 " + version
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
+    tas = TAS(llm_model=llm_model, version=version)
+    cl.user_session.set("tas", tas)
 
 @cl.on_message
 async def main(message: str):
     """Call the TAS asynchronously and send the response to the user."""
     tas = cl.user_session.get("tas")
-    res = await tas.ainvoke({"input": message.content,}, callbacks=[cl.AsyncLangchainCallbackHandler()])
-    await cl.Message(content=res["output"]).send()
+    # response = tas.cl_predict(query=message.content)
+    res = await tas.tas_executor.ainvoke({"input": message.content,}, callbacks=[cl.AsyncLangchainCallbackHandler()])
+    response = res["output"]
+    await cl.Message(content=response).send()
 
 
 """Chainlit testing of the SSA."""
