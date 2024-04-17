@@ -6,8 +6,9 @@ from langchain.agents import AgentExecutor, Tool, create_react_agent
 from langchain.memory import ConversationBufferMemory
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, messages_to_dict
 from langchain.chains import LLMChain
+import chainlit as cl
 
 # Tool imports
 from langchain.tools import StructuredTool
@@ -42,7 +43,7 @@ class ToolClass:
     def build_retrieval_tool(self):
         """Build the retrieval tool."""
         chroma_instance = load_peristent_chroma_store(openai_embedding=True,
-                                                        vectorstore_path="data/processed/chroma")
+                                                        vectorstore_path="data/vectorstores/Matematik1")
         def retrieval_function(query: str):
             docs = chroma_instance.similarity_search(query, k = 1)
             return docs[0].page_content
@@ -115,6 +116,11 @@ class MultiAgentClass:
                                     )
         return coding_multiagent
 
+
+
+
+
+
 """Teaching Agent System (TAS) for the thesis2024 project."""
 class TAS:
     """Class for the Teaching Agent System."""
@@ -129,7 +135,7 @@ class TAS:
 
     def build_executor(self, ver):
         """Build the Teaching Agent System executor."""
-        self.agenic = True
+        self.output_tag = "output"
         if ver == "v0":
             self.tas_executor = self.build_tas_v0()
         elif ver == "v1":
@@ -140,20 +146,19 @@ class TAS:
             self.tas_executor = self.build_tas_v3()
         else:
             self.tas_executor = self.build_nonagenic_baseline()
-            self.agenic = False
+            self.output_tag = "text"
 
 
     def build_tas_prompt(self):
         """Build the agent prompt."""
         system_message = """You will interact with a student who has no prior knowledge of the subject."""
-        course = """Introduction to Computer Science"""
-        subject = """Gradient Descent"""
+        course = """Mathematics 1."""
+        subject = """All subjects."""
 
         prompt_hub_template = hub.pull("augustsemrau/react-teaching-chat").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
         prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
         return prompt
-
 
     def build_nonagenic_baseline(self):
         """Build the baseline Teaching Agent System."""
@@ -261,11 +266,22 @@ This is the conversation so far:
 
     def predict(self, query):
         """Invoke the Teaching Agent System."""
-        if self.agenic:
-            response = self.tas_executor.invoke({"input": query})#["output"]
-        else:
-            response = self.tas_executor.invoke({"input": query})#["text"]
+        print("\n\nUser Query:", query)
+        response = self.tas_executor.invoke({"input": query})[self.output_tag]
+        print("\n\nTAS Memory:")
+        print(self.tas_executor.memory.chat_memory.messages)
+        # print(messages_to_dict(self.tas_executor.memory.chat_memory.messages))
         return response
+
+
+    def cl_predict(self, query):
+        """Invoke the Teaching Agent System."""
+        if self.agenic:
+            res = self.tas_executor.invoke({"input": query}, callbacks=[cl.AsyncLangchainCallbackHandler()])
+            return res["output"]
+        else:
+            res = self.tas_executor.invoke({"input": query}, callbacks=[cl.AsyncLangchainCallbackHandler()])
+            return res["text"]
 
 
 
@@ -277,8 +293,8 @@ This is the conversation so far:
 
 if __name__ == '__main__':
 
-    test_version = "baseline"
-    # test_version = "v0"
+    # test_version = "baseline"
+    test_version = "v0"
     langsmith_name = "TAS TEST 1 " + test_version
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
 
@@ -286,5 +302,6 @@ if __name__ == '__main__':
 
     # print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
 
-    print(tas.predict("Hello, I am August!"))
-    print(tas.predict("Can you explain me how ADAM optimization works?"))
+    tas.predict("Hello, I am August!")
+    tas.predict("Can you explain me how ADAM optimization works?")
+    tas.predict("What is the name of the person who invented this optimization technique?")
