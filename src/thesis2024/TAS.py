@@ -82,9 +82,12 @@ class ToolClass:
 class AgentClass:
     """Class for the agents used in the Teaching Agent System."""
 
-    def __init__(self):
+    def __init__(self,
+                 llm_model,
+                 tool_class):
         """Initialize the agent class."""
-        pass
+        self.llm_model = llm_model
+        self.tool_class = tool_class
 
     def build_search_agent(self):
         """Build the search agent."""
@@ -148,7 +151,6 @@ class TAS:
             self.tas_executor = self.build_nonagenic_baseline()
             self.output_tag = "text"
 
-
     def build_tas_prompt(self):
         """Build the agent prompt."""
         system_message = """You will interact with a student who has no prior knowledge of the subject."""
@@ -182,6 +184,7 @@ This is the conversation so far:
                                 verbose=False,)
         return baseline_chain
 
+    """TAS v0 has one agent with no tools."""
     def build_tas_v0(self):
         """Build the Teaching Agent System version 0.
 
@@ -200,6 +203,7 @@ This is the conversation so far:
                                            handle_parsing_errors=True)
         return tas_agent_executor
 
+    """TAS v1 has one agent using tools."""
     def build_tas_v1(self):
         """Build the Teaching Agent System version 1.
 
@@ -220,6 +224,7 @@ This is the conversation so far:
                                            handle_parsing_errors=True)
         return tas_agent_executor
 
+    """TAS v2 has one agent using other agents which have access to tools."""
     def build_tas_v2(self):
         """Build the Teaching Agent System version 2.
 
@@ -243,6 +248,7 @@ This is the conversation so far:
                                            handle_parsing_errors=True)
         return tas_agent_executor
 
+    """TAS v3 has one agent using multi-agent systems."""
     def build_tas_v3(self):
         """Build the Teaching Agent System version 3.
 
@@ -264,6 +270,7 @@ This is the conversation so far:
                                            handle_parsing_errors=True)
         return tas_agent_executor
 
+    """Predict function for invoking the initiated TAS."""
     def predict(self, query):
         """Invoke the Teaching Agent System."""
         print("\n\nUser Query:", query)
@@ -273,7 +280,7 @@ This is the conversation so far:
         # print(messages_to_dict(self.tas_executor.memory.chat_memory.messages))
         return response
 
-
+    """(DOES NOT WORK) Predict function for invoking the initiated TAS asynchronously for use in Chainlit frontend."""
     def cl_predict(self, query):
         """Invoke the Teaching Agent System."""
         if self.agenic:
