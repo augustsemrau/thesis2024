@@ -29,7 +29,7 @@ def init_llm_langsmith(llm_key = 3, temp = 0.5, langsmith_name: str = ""):
     if llm_key == 3:
         llm_ver = "gpt-3.5-turbo-0125"
     elif llm_key == 4:
-        llm_ver = "gpt-4-0125-preview"
+        llm_ver = "gpt-4-turbo-2024-04-09"
 
     if langsmith_name is not None:
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
