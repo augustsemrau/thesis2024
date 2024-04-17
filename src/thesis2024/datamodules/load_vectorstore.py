@@ -7,7 +7,8 @@ from langchain_openai import OpenAIEmbeddings
 
 
 
-def load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/processed/chroma"):
+def load_peristent_chroma_store(openai_embedding=True,
+                                vectorstore_path="data/vectorstores/Matematik1"):
     """Load a persistent Chroma vector store.
 
     :param persist_path: Path to the persistent Chroma vector store.
@@ -22,4 +23,7 @@ def load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/pr
     persist_dir = os.path.join(os.getcwd(), vectorstore_path)
     return Chroma(persist_directory=persist_dir, embedding_function=embedding_func)
 
+
+if __name__ == "__main__":
+    load_peristent_chroma_store()
 
