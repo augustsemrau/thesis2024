@@ -7,6 +7,7 @@ from langchain.memory import ConversationBufferMemory
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage
+from langchain.chains import LLMChain
 
 # Tool imports
 from langchain.tools import StructuredTool
@@ -156,9 +157,25 @@ class TAS:
 
     def build_nonagenic_baseline(self):
         """Build the baseline Teaching Agent System."""
-        prompt = "You are a teaching assistant. You are responsible for answering questions related to the course material."
-        chain = self.llm_model | prompt
-        return chain
+        prompt = {
+            "chat_history": {},
+            "input": input,
+            "system_message": ".",
+        }
+        prompt_template = """You are a teaching assistant. You are responsible for answering questions and inqueries that the student might have.\n
+Here is the student's query, which you MUST respond to:
+{input}\n
+This is the conversation so far:
+{chat_history}"""
+        prompt = PromptTemplate.from_template(template=prompt_template)
+        #  prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
+        baseline_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=False)
+        baseline_chain = LLMChain(llm=self.llm_model,
+                                prompt=prompt,
+                                memory=baseline_memory,
+                                #output_parser=BaseLLMOutputParser(),
+                                verbose=False,)
+        return baseline_chain
 
     def build_tas_v0(self):
         """Build the Teaching Agent System version 0.
@@ -244,10 +261,10 @@ class TAS:
 
     def predict(self, query):
         """Invoke the Teaching Agent System."""
-        if not self.agenic:
-            response = self.tas_executor.invoke({"input": query})["text"]
+        if self.agenic:
+            response = self.tas_executor.invoke({"input": query})#["output"]
         else:
-            response = self.tas_executor.invoke({"input": query})["output"]
+            response = self.tas_executor.invoke({"input": query})#["text"]
         return response
 
 
@@ -259,8 +276,15 @@ class TAS:
 
 
 if __name__ == '__main__':
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="TAS v1 TEST 1")
 
-    tas = TAS(llm_model=llm_model, version="v1")
+    test_version = "baseline"
+    # test_version = "v0"
+    langsmith_name = "TAS TEST 1 " + test_version
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
 
-    print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
+    tas = TAS(llm_model=llm_model, version=test_version)
+
+    # print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
+
+    print(tas.predict("Hello, I am August!"))
+    print(tas.predict("Can you explain me how ADAM optimization works?"))
