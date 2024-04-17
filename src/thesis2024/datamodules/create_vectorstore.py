@@ -14,7 +14,10 @@ from langchain_openai import OpenAIEmbeddings
 
 
 
-def create_persistent_chroma_store(openai_embedding, chunk_size, chunk_overlap):
+def create_persistent_chroma_store(folder_name:str,
+                                   openai_embedding=True,
+                                   chunk_size: int=1000,
+                                   chunk_overlap: int=150):
     """Create Vector Store.
 
     Create a persistent Chroma vector store from PDF documents in a directory.
@@ -24,8 +27,16 @@ def create_persistent_chroma_store(openai_embedding, chunk_size, chunk_overlap):
     :param chunk_overlap: Overlap between consecutive text chunks.
     :return: None
     """
-    data_dir = os.path.join(os.getcwd(), 'data/raw/DLAI_CWYDcourse')
-    persist_dir = os.path.join(os.getcwd(), 'data/processed/chroma')
+    # data_dir = os.path.join(os.getcwd(), 'data/raw/DLAI_CWYDcourse')
+    # persist_dir = os.path.join(os.getcwd(), 'data/processed/chroma')
+
+    data_dir = f'data/raw/{folder_name}'
+
+    # Create a directory to save the persistent Chroma vector store
+
+    if not os.path.exists(f'data/vectorstores/{folder_name}'):
+        os.makedirs(f'data/vectorstores/{folder_name}')
+    persist_dir = f'data/vectorstores/{folder_name}'
 
     # Process each PDF file in the directory
     all_docs = []
@@ -72,10 +83,11 @@ if __name__ == '__main__':
     openai.api_key  = os.environ['OPENAI_API_KEY']
 
     # Get the data and process it
-    create_persistent_chroma_store(openai_embedding=True,
+    create_persistent_chroma_store(folder_name="Matematik1",
+                                   openai_embedding=True,
                                    chunk_size=1000,
                                    chunk_overlap=150)
-    pass
+
 
 
 
