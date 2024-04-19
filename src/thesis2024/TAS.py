@@ -39,10 +39,19 @@ class ToolClass:
                         )
         return search_tool
 
-    def build_retrieval_tool(self):
+    def build_retrieval_tool(self, course_name="Matematik1"):
         """Build the retrieval tool."""
-        chroma_instance = load_peristent_chroma_store(openai_embedding=True,
-                                                        vectorstore_path="data/vectorstores/Matematik1")
+        course_list = ["Matematik 1", "Mathematics 1", "Deep Learning"]
+        if course_name not in course_list:
+            raise ValueError(f"Course name not recognized. Should be one of {course_list}.")
+
+        if course_name == "Matematik1":
+            chroma_instance = load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/vectorstores/Matematik1")
+        elif course_name == "Mathematics 1":
+            chroma_instance = load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/vectorstores/Math1_new")
+        elif course_name == "Deep Learning":
+            chroma_instance = load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/vectorstores/DeepLearning")
+
         def retrieval_function(query: str):
             docs = chroma_instance.similarity_search(query, k = 1)
             return docs[0].page_content
@@ -129,9 +138,13 @@ class TAS:
 
     def __init__(self,
                  llm_model,
-                 version: str = "v0"):
+                 version: str = "v0",
+                 course: str = "Mathematics 1",
+                 subject: str = "All subjects"):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
+        self.course = course
+        self.subject = subject
         self.tas_prompt = self.build_tas_prompt()
         self.build_executor(ver=version)
 
@@ -140,8 +153,9 @@ class TAS:
         """Initialize the memory for the Teaching Agent System."""
         memory = ConversationBufferMemory(memory_key="chat_history",
                                               return_messages=False,
-                                              ai_prefix="Teaching Agent System",
-                                              human_prefix="Student")
+                                              ai_prefix="Teaching Assistant",
+                                              human_prefix="Student",
+                                              )
         return memory
 
     """Build the Teaching Agent System executor."""
@@ -164,12 +178,11 @@ class TAS:
     def build_tas_prompt(self):
         """Build the agent prompt."""
         system_message = """You will interact with a student who has no prior knowledge of the subject."""
-        course = """Mathematics 1."""
-        subject = """All subjects."""
-
         prompt_hub_template = hub.pull("augustsemrau/react-teaching-chat").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-        prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
+        prompt = prompt_template.partial(system_message=system_message,
+                                         course_name=self.course,
+                                         subject_name=self.subject)
         return prompt
 
     """Baseline Teaching Agent System (will maybe be redundant)."""
@@ -221,7 +234,7 @@ This is the conversation so far:
         This version of the TAS is agenic, and has simple tools.
         """
         tool_class = ToolClass()
-        tools = [tool_class.build_search_tool(), tool_class.build_retrieval_tool()]#, tool_class.build_coding_tool()]
+        tools = [tool_class.build_search_tool(), tool_class.build_retrieval_tool(course_name=self.course)]#, tool_class.build_coding_tool()]
 
         tas_v1_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,

@@ -12,7 +12,10 @@ def main():
     version = "v1"
     langsmith_name = "Chainlit Conversation 1 " + version
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
-    tas = TAS(llm_model=llm_model, version=version)
+    tas = TAS(llm_model=llm_model,
+              version=version,
+              course="Mathematics 1",
+              subject="Differential Equations",)
     cl.user_session.set("tas", tas)
 
 @cl.on_message
