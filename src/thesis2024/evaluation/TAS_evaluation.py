@@ -58,12 +58,14 @@ class TasEvaluator:
     def output_dataset(self, inputs: dict) -> dict:
         """Extract entire chat history from dataset."""
         chat_hist = inputs["chat_history"]
-        conversation = ""
-        for message in chat_hist:
-            if message['type'] == "ai":
-                conversation += f"Teaching Assistant: {message['content']}\n\n"
-            else:
-                conversation += f"Student: {message['content']}\n\n"
+        # conversation = ""
+        # for message in chat_hist:
+        #     if message['type'] == "ai":
+        #         conversation += f"Teaching Assistant: {message['content']}\n\n"
+        #     else:
+        #         conversation += f"Student: {message['content']}\n\n"
+        print(chat_hist)
+        conversation = chat_hist
         self.correctness_output = self.correctness(conversation=conversation)
         self.clarity_output = self.clarity(conversation=conversation)
         self.funnyness_output = self.funnyness(conversation=conversation)
@@ -179,7 +181,7 @@ if __name__ == "__main__":
     experiment_name = "TAS Evaluation Test 1"
     evaluator_class = TasEvaluator(eval_model=llm_model, experiment_name=experiment_name)
 
-    dataset_name = "TAS v1 Conversations"
+    dataset_name = "dataset2"
     experiment_results = evaluator_class.run_evaluation(dataset_name=dataset_name)
 
 
