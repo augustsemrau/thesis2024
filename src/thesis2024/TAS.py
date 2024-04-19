@@ -7,13 +7,12 @@ from langchain.memory import ConversationBufferMemory
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, messages_to_dict
-from langchain.chains import LLMChain
+from langchain.chains import ConversationChain, LLMChain
 import chainlit as cl
 
 # Tool imports
 from langchain.tools import StructuredTool
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
-from langchain_core.tools import tool
 from typing import Annotated
 from langchain_experimental.utilities import PythonREPL
 
@@ -136,6 +135,16 @@ class TAS:
         self.tas_prompt = self.build_tas_prompt()
         self.build_executor(ver=version)
 
+    """Initialize the memory for the Teaching Agent System."""
+    def init_memory(self):
+        """Initialize the memory for the Teaching Agent System."""
+        memory = ConversationBufferMemory(memory_key="chat_history",
+                                              return_messages=False,
+                                              ai_prefix="Teaching Agent System",
+                                              human_prefix="Student")
+        return memory
+
+    """Build the Teaching Agent System executor."""
     def build_executor(self, ver):
         """Build the Teaching Agent System executor."""
         self.output_tag = "output"
@@ -149,8 +158,9 @@ class TAS:
             self.tas_executor = self.build_tas_v3()
         else:
             self.tas_executor = self.build_nonagenic_baseline()
-            self.output_tag = "text"
+            self.output_tag = "response"
 
+    """Prompt for the Teaching Agent System."""
     def build_tas_prompt(self):
         """Build the agent prompt."""
         system_message = """You will interact with a student who has no prior knowledge of the subject."""
@@ -162,6 +172,7 @@ class TAS:
         prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
         return prompt
 
+    """Baseline Teaching Agent System (will maybe be redundant)."""
     def build_nonagenic_baseline(self):
         """Build the baseline Teaching Agent System."""
         prompt = {
@@ -176,8 +187,8 @@ This is the conversation so far:
 {chat_history}"""
         prompt = PromptTemplate.from_template(template=prompt_template)
         #  prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
-        baseline_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=False)
-        baseline_chain = LLMChain(llm=self.llm_model,
+        baseline_memory = self.init_memory()
+        baseline_chain = ConversationChain(llm=self.llm_model,
                                 prompt=prompt,
                                 memory=baseline_memory,
                                 #output_parser=BaseLLMOutputParser(),
@@ -191,7 +202,7 @@ This is the conversation so far:
         This version of the TAS is agenic, but has no tools.
         """
         tools = []  # NO TOOLS FOR v0
-        tas_v0_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        tas_v0_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
@@ -212,7 +223,7 @@ This is the conversation so far:
         tool_class = ToolClass()
         tools = [tool_class.build_search_tool(), tool_class.build_retrieval_tool()]#, tool_class.build_coding_tool()]
 
-        tas_v1_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        tas_v1_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
@@ -236,7 +247,7 @@ This is the conversation so far:
 
 
         tools = []
-        tas_v2_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        tas_v2_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
@@ -258,7 +269,7 @@ This is the conversation so far:
         coding_multi_agent = multi_agent_class.build_coding_multi_agent()
         tools = [coding_multi_agent]
 
-        tas_v3_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        tas_v3_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
@@ -276,7 +287,7 @@ This is the conversation so far:
         print("\n\nUser Query:", query)
         response = self.tas_executor.invoke({"input": query})[self.output_tag]
         print("\n\nTAS Memory:")
-        print(self.tas_executor.memory.chat_memory.messages)
+        print(self.tas_executor.memory)#.chat_memory.messages)
         # print(messages_to_dict(self.tas_executor.memory.chat_memory.messages))
         return response
 
@@ -301,7 +312,7 @@ This is the conversation so far:
 if __name__ == '__main__':
 
     # test_version = "baseline"
-    test_version = "v0"
+    test_version = "Baseline"
     langsmith_name = "TAS TEST 1 " + test_version
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
 
@@ -309,6 +320,8 @@ if __name__ == '__main__':
 
     # print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
 
-    tas.predict("Hello, I am August!")
-    tas.predict("Can you explain me how ADAM optimization works?")
+    res = tas.predict("Hello, I am August!")
+    print("\n\nResponse: ", res)
+    res = tas.predict("Can you explain me how ADAM optimization works?")
+    print("\n\nResponse: ", res)
     tas.predict("What is the name of the person who invented this optimization technique?")

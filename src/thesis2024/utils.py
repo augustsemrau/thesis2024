@@ -32,6 +32,7 @@ def init_llm_langsmith(llm_key = 3, temp = 0.5, langsmith_name: str = ""):
         llm_ver = "gpt-4-turbo-2024-04-09"
 
     if langsmith_name is not None:
+        os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
         os.environ["LANGCHAIN_PROJECT"] = llm_ver + "_Temp: " + str(temp) + "_" + langsmith_name
 

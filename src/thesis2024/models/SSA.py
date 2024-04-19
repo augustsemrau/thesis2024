@@ -26,7 +26,7 @@ class SSA:
 
     def build_ssa_prompt(self):
         """Build the agent prompt."""
-        system_message = """Your name is Felix. 
+        system_message = """Your name is Felix, the student. 
 You want to learn and you are curios. 
 Your goal is to understand the basics and be able to reflect on the given topic. 
 You will never write more than 3 sentences at a time."""
@@ -43,13 +43,21 @@ You will never write more than 3 sentences at a time."""
                                          prior_knowledge=prior_knowledge)
         return prompt
 
-
+    def init_memory(self):
+        """Initialize the memory for the Teaching Agent System."""
+        # ai_prefix and human_prefix are swapped here compared to the TAS,
+        # because the SSA is the student.
+        memory = ConversationBufferMemory(memory_key="chat_history",
+                                              return_messages=True,
+                                              ai_prefix="Student",
+                                              human_prefix="Teaching Agent System")
+        return memory
 
 
 
     def build_ssa_v0(self):
         """Create the simulated student agent chain."""
-        ssa_v0_memory = ConversationBufferMemory(memory_key="chat_history", return_messages=False)
+        ssa_v0_memory = self.init_memory()
         ssa_v0_chain = LLMChain(llm=self.llm_model,
                                 prompt=self.ssa_prompt,
                                 memory=ssa_v0_memory,
