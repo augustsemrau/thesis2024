@@ -4,10 +4,9 @@
 from langchain import hub
 from langchain.agents import AgentExecutor, Tool, create_react_agent
 from langchain.memory import ConversationBufferMemory
-from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
-from langchain_core.messages import HumanMessage, messages_to_dict
-from langchain.chains import ConversationChain, LLMChain
+from langchain_core.messages import HumanMessage
+from langchain.chains import ConversationChain
 import chainlit as cl
 
 # Tool imports
