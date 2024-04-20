@@ -139,11 +139,13 @@ class TAS:
                  llm_model,
                  version: str = "v0",
                  course: str = "Mathematics 1",
-                 subject: str = "All subjects"):
+                 subject: str = "All subjects",
+                 longterm_memory=False):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
         self.course = course
         self.subject = subject
+        self.longterm_memory = longterm_memory
         self.tas_prompt = self.build_tas_prompt()
         self.build_executor(ver=version)
 
@@ -156,6 +158,11 @@ class TAS:
                                               human_prefix="Student",
                                               )
         return memory
+
+    def init_longterm_memory(self, user_id: str):
+        """Initialize the long-term memory for the Teaching Agent System."""
+
+        return None
 
     """Build the Teaching Agent System executor."""
     def build_executor(self, ver):
