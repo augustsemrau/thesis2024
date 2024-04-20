@@ -1,8 +1,8 @@
-ipykernel==6.29.0
+ipykernel#==6.29.0
 
 
-tensorboard==2.15.1
-scikit-learn==1.4.0
+tensorboard#==2.15.1
+scikit-learn#==1.4.0
 
 langchain
 langchain-community
@@ -10,26 +10,26 @@ langchain-openai
 langgraph
 langchainhub
 openai
-pypdf==4.0.0
+pypdf#==4.0.0
 bs4
 human-eval
 langchain-benchmarks
 
 
 # Below versions are not up-to-date, but they are the latest versions that work with the current code
-chromadb==0.4.3
-hnswlib==0.7.0
-chroma-hnswlib==0.7.1
+chromadb#==0.4.3
+hnswlib#==0.7.0
+chroma-hnswlib#==0.7.1
 
-lark==1.1.9
-panel==1.3.7
-docarray==0.32.1
-jupyter_bokeh==3.0.7
-sentence-transformers==2.2.2
-openai==1.9.0
-streamlit==1.30.0
+lark#==1.1.9
+panel#==1.3.7
+docarray#==0.32.1
+jupyter_bokeh#==3.0.7
+sentence-transformers#==2.2.2
+openai#==1.9.0
+streamlit#==1.30.0
 
-matplotlib==3.8.2
+matplotlib#==3.8.2
 plotly
 
 #torch >= 2.1.2
