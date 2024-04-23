@@ -25,6 +25,8 @@ def init_llm_langsmith(llm_key = 3, temp = 0.5, langsmith_name: str = ""):
             os.environ[var] = getpass(f"Please provide your {var}")
     _set_if_undefined("OPENAI_API_KEY")
     _set_if_undefined("LANGCHAIN_API_KEY")
+    os.environ["LANGMEM_API_URL"] = "https://long-term-memory-shared-for-6e67d43146acf1d71174b-vz4y4ooboq-uc.a.run.app"
+    _set_if_undefined("LANGMEM_API_KEY")
 
     if llm_key == 3:
         llm_ver = "gpt-3.5-turbo-0125"
