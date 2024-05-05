@@ -21,6 +21,7 @@ from thesis2024.models.coding_agent import CodingMultiAgent
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
 
+
 """Tools for the Teaching Agent System (TAS) v1."""
 class ToolClass:
     """Class for the tools in the Teaching Agent System."""
