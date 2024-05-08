@@ -46,7 +46,7 @@ class ToolClass:
         #                 )
 
         search_func = TavilySearchResults()
-        search_tool = Tool(name="Current Search",
+        search_tool = Tool(name="Web Search",
                         func=search_func.invoke,
                         description="Useful when you need to answer questions about current events or the current state of the world."
                         )
@@ -306,6 +306,7 @@ class TAS:
         return tas_agent_executor
     """v0 is DONE"""
 
+
     """TODO TAS v1 has one agent using tools."""
     def build_tas_v1(self):
         """Build the Teaching Agent System version 1.
@@ -388,6 +389,8 @@ class TAS:
 
 
 
+
+
     """(Likely not for use) Baseline Teaching Agent System (will maybe be redundant)."""
     def build_nonagenic_baseline(self):
         """Build the baseline Teaching Agent System."""
@@ -430,14 +433,12 @@ This is the conversation so far:
 if __name__ == '__main__':
 
     # test_version = "baseline"
-    test_version = "v2"
+    test_version = "v0"
     time_now = time.strftime("%Y%m%d-%H%M%S")
     langsmith_name = test_version + " TAS TEST " + time_now
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
 
     tas = TAS(llm_model=llm_model, version=test_version)
-
-    # print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
 
     res = tas.predict("Hello, I am August!")
     print("\n\nResponse: ", res)
@@ -445,3 +446,8 @@ if __name__ == '__main__':
     # res = tas.predict("Can you explain me how ADAM optimization works?")
     print("\n\nResponse: ", res)
     tas.predict("What is the name of the person who invented this optimization technique?")
+    print("\n\nResponse: ", res)
+    tas.predict("Thank you for the help, have a nice day!")
+    # print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
+
+
