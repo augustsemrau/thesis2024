@@ -1,11 +1,12 @@
 """Module containing the simulated student agent (SSA) system."""
 
+# LangChain imports
 from langchain import hub
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import LLMChain
-from langchain_core.output_parsers import BaseLLMOutputParser
 
+# Local Imports
 from thesis2024.utils import init_llm_langsmith
 
 
@@ -29,7 +30,8 @@ class SSA:
         system_message = """Your name is Felix, the student. 
 You want to learn and you are curios. 
 Your goal is to understand the basics and be able to reflect on the given topic. 
-You will never write more than 3 sentences at a time."""
+You will never write more than 3 sentences at a time.
+The last message you write should be 'FINISHED' to end the conversation."""
         course = """Introduction to Computer Science"""
         subject = """Gradient Descent"""
         prior_knowledge = """You have a fundamental knowledge of math, statistics, and programming."""
