@@ -105,7 +105,7 @@ class TasEvaluator:
         """Evaluate correctness."""
         criteria = "Correctness"
         criteria_des = "How factually correct are the things the teaching assistant is saying? The more factual errors, the lower the score."
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-correctness",
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
         chain = prompt | self.eval_model | JsonOutputParser()
@@ -119,7 +119,7 @@ class TasEvaluator:
         """Evaluate clarity."""
         criteria = "Clarity"
         criteria_des = "How clearly is the teaching assistant communicating? The more clear, the higher the score."
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-correctness",
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
         chain = prompt | self.eval_model | JsonOutputParser()
@@ -133,7 +133,7 @@ class TasEvaluator:
         """Evaluate funnyness."""
         criteria = "Funnyness"
         criteria_des = "How funny is teaching assistant, and is it making any jokes? The more funny, the higher the score."
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-correctness",
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
         chain = prompt | self.eval_model | JsonOutputParser()
@@ -147,7 +147,7 @@ class TasEvaluator:
         """Evaluate adaptability."""
         criteria = "Teaching Adaptability"
         criteria_des = "How well is the teaching assistant adapting it's teaching approach to the student? The more adaptable, the higher the score."
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-correctness",
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
         chain = prompt | self.eval_model | JsonOutputParser()
@@ -161,7 +161,7 @@ class TasEvaluator:
         """Evaluate politeness."""
         criteria = "Politeness"
         criteria_des = "How polite is the teaching assistant? The more polite, the higher the score."
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-correctness",
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
         chain = prompt | self.eval_model | JsonOutputParser()
