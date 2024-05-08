@@ -85,13 +85,28 @@ async def create_student_formative_event_memory():
 class LongTermMemory:
     """Long-term memory."""
 
-    def __init__(self):
+    def __init__(self,
+                 user_id: str):
         """Initialize the long-term memory."""
         self.oai_client = openai.AsyncClient()
         self.langmem_client = AsyncClient()
 
     def create_student_id(self):
         """Create new student ID and save it in a file for future reference."""
+
+        pass
+
+    def get_core_beliefs(self):
+        """Get the core beliefs of the student."""
+        pass
+
+    def get_formative_events(self):
+        """Get the formative events of the student."""
+        pass
+
+    def get_longterm_memory(self):
+        """Get the long-term memory of the student."""
+        pass
 
 
 
