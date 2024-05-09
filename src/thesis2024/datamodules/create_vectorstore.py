@@ -83,7 +83,7 @@ if __name__ == '__main__':
     openai.api_key  = os.environ['OPENAI_API_KEY']
 
     # Get the data and process it
-    create_persistent_chroma_store(folder_name="Matematik1",
+    create_persistent_chroma_store(folder_name="02450_IntroML",
                                    openai_embedding=True,
                                    chunk_size=1000,
                                    chunk_overlap=150)

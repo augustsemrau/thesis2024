@@ -1,4 +1,8 @@
 """Frontend for conversing with the TAS, built using ChainLit."""
+
+# To run (from thesis2024/src/thesis2024/)
+# chainlit run frontend/chainlit_conversational.py -w --port 7097
+import time
 import chainlit as cl
 from thesis2024.utils import init_llm_langsmith
 from thesis2024.TAS import TAS
@@ -10,12 +14,12 @@ from thesis2024.models.SSA import SSA
 def main():
     """Instantiate required classes for the user session."""
     version = "v1"
-    langsmith_name = "Chainlit Conversation 1 " + version
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
+    time_now = time.strftime("%Y.%m.%d-%H.%M.")
+    langsmith_name = version + " Chainlit-Conversation " + time_now
+    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name=langsmith_name)
     tas = TAS(llm_model=llm_model,
               version=version,
-              course="Mathematics 1",
-              subject="Differential Equations",)
+              course="Math1")
     cl.user_session.set("tas", tas)
 
 @cl.on_message
@@ -26,6 +30,9 @@ async def main(message: str):
     res = await tas.tas_executor.ainvoke({"input": message.content,}, callbacks=[cl.AsyncLangchainCallbackHandler()])
     response = res["output"]
     await cl.Message(content=response).send()
+
+
+
 
 
 """Chainlit testing of the SSA."""
@@ -45,5 +52,3 @@ async def main(message: str):
 #     await cl.Message(content=res["text"]).send()
 
 
-# To run (from thesis2024/src/thesis2024/)
-# chainlit run frontend/chainlit_conversational.py -w --port 7097
