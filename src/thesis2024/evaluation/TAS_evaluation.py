@@ -1,5 +1,8 @@
 """Module contains the implementation of the TAS evaluation."""
 
+import time
+
+
 # Langchain imports
 from langchain import chat_models, prompts, smith, hub
 from langchain.schema import output_parser
@@ -58,21 +61,20 @@ class TasEvaluator:
     def output_dataset(self, inputs: dict) -> dict:
         """Extract entire chat history from dataset."""
         chat_hist = inputs["chat_history"]
-        # conversation = ""
-        # for message in chat_hist:
-        #     if message['type'] == "ai":
-        #         conversation += f"Teaching Assistant: {message['content']}\n\n"
-        #     else:
-        #         conversation += f"Student: {message['content']}\n\n"
-        print(chat_hist)
-        conversation = chat_hist
+        # second_last_message = inputs["input"]
+        # outputs = run.outputs["output"]
+
+        conversation = chat_hist #+ "\n" + second_last_message
+
         self.correctness_output = self.correctness(conversation=conversation)
+        self.relevance_output = self.relevance(conversation=conversation)
         self.clarity_output = self.clarity(conversation=conversation)
         self.funnyness_output = self.funnyness(conversation=conversation)
         self.adaptability_output = self.adaptability(conversation=conversation)
         self.politeness_output = self.politeness(conversation=conversation)
 
         return {"Correctness": self.correctness_output,
+                "Relevance": self.relevance_output,
                 "Clarity": self.clarity_output,
                 "Funnyness": self.funnyness_output,
                 "Adaptability": self.adaptability_output,
@@ -84,6 +86,7 @@ class TasEvaluator:
         """Run the evaluation experiment."""
         other_metrics = OtherEvaluationMetrics()
         evalulators = [self.correctness_grade,
+                       self.relevance_grade,
                        self.clarity_grade,
                        self.funnyness_grade,
                        self.adaptability_grade,
@@ -104,7 +107,11 @@ class TasEvaluator:
     def correctness(self, conversation):
         """Evaluate correctness."""
         criteria = "Correctness"
-        criteria_des = "How factually correct are the things the teaching assistant is saying? The more factual errors, the lower the score."
+        criteria_des = """
+The correctness of the information provided by the Teaching Assistant is paramount. 
+How factually accurate are the things the Teaching Assistant is saying? 
+More correct should be given a higher score, and less correct should be given a lower score.
+"""
         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
@@ -114,11 +121,34 @@ class TasEvaluator:
         """Output correctness grade to Langsmith."""
         return {"key": "Correctness", "score": float(self.correctness_output['Grade'])}
 
+    """Evaluate relevance."""
+    def relevance(self, conversation):
+        """Evaluate relevance."""
+        criteria = "Relevance"
+        criteria_des = """
+The Teaching Assistant should deliver content that is directly relevant to the topic being discussed, avoiding tangential information unless it enhances understanding. 
+How relevant are the things the Teaching Assistant is saying? 
+More relevant should be given a higher score, and less relevant should be given a lower score.
+"""
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
+                                        criteria=criteria,
+                                        criteria_des=criteria_des)
+        chain = prompt | self.eval_model | JsonOutputParser()
+        return chain.invoke({"input": conversation})
+    def relevance_grade(self, run: Run, example: Example) -> dict:
+        """Output correctness grade to Langsmith."""
+        return {"key": "Relevance", "score": float(self.correctness_output['Grade'])}
+
+
     """Evaluate clarity."""
     def clarity(self, conversation):
         """Evaluate clarity."""
         criteria = "Clarity"
-        criteria_des = "How clearly is the teaching assistant communicating? The more clear, the higher the score."
+        criteria_des = """
+The ability of the Teaching Assistant to explain concepts clearly and understandably. This includes using appropriate vocabulary and structuring responses in a logical manner. 
+How clearly is the Teaching Assistant communicating? 
+Clearer communication should be given a higher score, and less clear communication should be given a lower score.
+"""
         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
@@ -128,25 +158,15 @@ class TasEvaluator:
         """Output correctness grade to Langsmith."""
         return {"key": "Clarity", "score": float(self.clarity_output['Grade'])}
 
-    """Evaluate funnyness."""
-    def funnyness(self, conversation):
-        """Evaluate funnyness."""
-        criteria = "Funnyness"
-        criteria_des = "How funny is teaching assistant, and is it making any jokes? The more funny, the higher the score."
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
-                                        criteria=criteria,
-                                        criteria_des=criteria_des)
-        chain = prompt | self.eval_model | JsonOutputParser()
-        return chain.invoke({"input": conversation})
-    def funnyness_grade(self, run: Run, example: Example) -> dict:
-        """Output correctness grade to Langsmith."""
-        return {"key": "Funnyness", "score": float(self.funnyness_output['Grade'])}
-
     """Evaluate adaptability."""
     def adaptability(self, conversation):
         """Evaluate adaptability."""
-        criteria = "Teaching Adaptability"
-        criteria_des = "How well is the teaching assistant adapting it's teaching approach to the student? The more adaptable, the higher the score."
+        criteria = "Adaptability"
+        criteria_des = """
+The ability to adjust explanations or the level of detail based on the student's responses, questions, or level of understanding.
+How well is the Teaching Assistant adapting it's teaching approach to the student? 
+Better adaptability should be given a higher score, and lack of adaptability should be given a lower score.
+"""
         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
@@ -154,7 +174,7 @@ class TasEvaluator:
         return chain.invoke({"input": conversation})
     def adaptability_grade(self, run: Run, example: Example) -> dict:
         """Output correctness grade to Langsmith."""
-        return {"key": "Teaching Adaptability", "score": float(self.adaptability_output['Grade'])}
+        return {"key": "Adaptability", "score": float(self.adaptability_output['Grade'])}
 
     """Evaluate politeness."""
     def politeness(self, conversation):
@@ -170,18 +190,31 @@ class TasEvaluator:
         """Output correctness grade to Langsmith."""
         return {"key": "Politeness", "score": float(self.politeness_output['Grade'])}
 
-
+    """Evaluate funnyness."""
+    def funnyness(self, conversation):
+        """Evaluate funnyness."""
+        criteria = "Funnyness"
+        criteria_des = "How funny is teaching assistant, and is it making any jokes? The more funny, the higher the score."
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
+                                        criteria=criteria,
+                                        criteria_des=criteria_des)
+        chain = prompt | self.eval_model | JsonOutputParser()
+        return chain.invoke({"input": conversation})
+    def funnyness_grade(self, run: Run, example: Example) -> dict:
+        """Output correctness grade to Langsmith."""
+        return {"key": "Funnyness", "score": float(self.funnyness_output['Grade'])}
 
 
 
 if __name__ == "__main__":
-    langsmith_name = "Langsmith Eval Experiment 1"
+
+    time_now = time.strftime("%Y.%m.%d-%H.%M.")
+    langsmith_name = "TAS Evaluation RQ1 " + time_now
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
 
-    experiment_name = "TAS Evaluation Test 1"
-    evaluator_class = TasEvaluator(eval_model=llm_model, experiment_name=experiment_name)
+    evaluator_class = TasEvaluator(eval_model=llm_model, experiment_name=langsmith_name)
 
-    dataset_name = "dataset2"
+    dataset_name = "TAS_v1_GPT4_Dataset"
     experiment_results = evaluator_class.run_evaluation(dataset_name=dataset_name)
 
 
