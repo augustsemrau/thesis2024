@@ -53,25 +53,25 @@ class ToolClass:
         return search_tool
 
     """Retrieval Tool using Chroma as vectorstore."""
-    def build_retrieval_tool(self, course_name="Matematik1"):
+    def build_retrieval_tool(self, course_name="Math1"):
         """Build the retrieval tool."""
-        course_list = ["Matematik 1", "Mathematics 1", "Deep Learning"]
+        course_list = ["Mat1", "Math1", "DeepLearning", "IntroToMachineLearning"]
         if course_name not in course_list:
             raise ValueError(f"Course name not recognized. Should be one of {course_list}.")
+        chroma_instance = load_peristent_chroma_store(openai_embedding=True, vectorstore_path=f"data/vectorstores/{course_name}")
 
-        if course_name == "Matematik1":
-            chroma_instance = load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/vectorstores/Matematik1")
-        elif course_name == "Mathematics 1":
-            chroma_instance = load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/vectorstores/Math1_new")
-        elif course_name == "Deep Learning":
-            chroma_instance = load_peristent_chroma_store(openai_embedding=True, vectorstore_path="data/vectorstores/DeepLearning")
 
         def retrieval_function(query: str):
             docs = chroma_instance.similarity_search(query, k = 3)
             if len(docs) == 0:
                 return "No relevant documents found in all local data."
             else:
-                return docs[0].page_content
+                # append the first 3 documents to the 
+                return_docs = ""
+                for doc in docs:
+                    return_docs += doc.page_content + "\n\n"
+                return return_docs
+
         retrieval_tool = StructuredTool.from_function(
                             name="Retrieval Tool",
                             func=retrieval_function,
@@ -97,10 +97,11 @@ class ToolClass:
             except BaseException as e:
                 return f"Failed to execute. Error: {repr(e)}"
             return f"Succesfully executed:\n```python\n{code}\n```\nStdout: {result}"
+
         coding_tool = StructuredTool.from_function(
                             name="Coding Tool",
                             func=python_repl,
-                            description="Useful when you need to answer questions using code."
+                            description="Useful when you have some code you want to execute, for generating a plot for example."
                             )
         return coding_tool
 
@@ -173,10 +174,6 @@ class AgentClass:
                             )
         return retrieval_agent
 
-
-
-
-
 """Multi-Agent systems for the Teaching Agent System (TAS) v3."""
 class MultiAgentClass:
     """Class for the multi-agent systems used in the Teaching Agent System."""
@@ -214,15 +211,13 @@ class TAS:
     def __init__(self,
                  llm_model,
                  version: str = "v0",
-                 course: str = "Mathematics 1",
-                 subject: str = "All subjects",
+                 course: str = "Math1",
                  longterm_memory=False,
                  user_id: str=None,
                  ):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
         self.course = course
-        self.subject = subject
         self.longterm_memory = longterm_memory
         self.user_id = user_id
         self.tas_prompt = self.build_tas_prompt()
@@ -271,15 +266,13 @@ class TAS:
             prompt_hub_template = hub.pull("augustsemrau/react-langmem-teaching-chat").template
             prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
             prompt = prompt_template.partial(course_name=self.course,
-                                            subject_name=self.subject,
                                             core_beliefs=core_beliefs,
                                             formative_events=formative_events,
                                             longterm_memory=longterm_memory,)
         else:
             prompt_hub_template = hub.pull("augustsemrau/react-teaching-chat").template
             prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-            prompt = prompt_template.partial(course_name=self.course,
-                                            subject_name=self.subject)
+            prompt = prompt_template.partial(course_name=self.course)
         return prompt
 
 
@@ -314,7 +307,10 @@ class TAS:
         This version of the TAS is agenic, and has simple tools.
         """
         tool_class = ToolClass()
-        tools = [tool_class.build_search_tool(), tool_class.build_retrieval_tool(course_name=self.course)]#, tool_class.build_coding_tool()]
+        tools = [tool_class.build_search_tool(),
+                 tool_class.build_retrieval_tool(course_name=self.course),
+                 tool_class.build_coding_tool(),
+                 tool_class.build_math_tool()]
 
         tas_v1_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,
@@ -375,6 +371,7 @@ class TAS:
 
 
     """Predict function for invoking the initiated TAS."""
+    # TODO Implement Long-Term Memory
     def predict(self, query):
         """Invoke the Teaching Agent System."""
         print("\n\nUser Query:", query)
@@ -433,21 +430,28 @@ This is the conversation so far:
 if __name__ == '__main__':
 
     # test_version = "baseline"
-    test_version = "v0"
-    time_now = time.strftime("%Y%m%d-%H%M%S")
+    test_version = "v1"
+    time_now = time.strftime("%Y.%m.%d-%H.%M.")
     langsmith_name = test_version + " TAS TEST " + time_now
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
 
-    tas = TAS(llm_model=llm_model, version=test_version)
+    tas = TAS(llm_model=llm_model,
+              version=test_version,
+              course="IntroToMachineLearning",
+              longterm_memory=False,
+              user_id=None)
 
-    res = tas.predict("Hello, I am August!")
+    res = tas.predict("Hello, I am August! Today, I would like to learn about the three most important supervised learning algorithms.")
     print("\n\nResponse: ", res)
-    res = tas.predict("What is the current world record in 50 meter butterfly?")
+    res = tas.predict("What is the name of the person who invented this optimization technique?")
+    print("\n\nResponse: ", res)
+    res = tas.predict("Thank you for the help, have a nice day!")
+    print("\n\nResponse: ", res)
+
+
+
+
+    # Old test queries
+    # res = tas.predict("What is the current world record in 50 meter butterfly?")
     # res = tas.predict("Can you explain me how ADAM optimization works?")
-    print("\n\nResponse: ", res)
-    tas.predict("What is the name of the person who invented this optimization technique?")
-    print("\n\nResponse: ", res)
-    tas.predict("Thank you for the help, have a nice day!")
     # print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
-
-
