@@ -1,16 +1,44 @@
 """Long-term memory for the system."""
 
-
-import openai
-from langmem import AsyncClient, Client
-
-import json
+# Basic Imports
+import uuid
+import csv
+import os
 from typing import List
+
 from pydantic import BaseModel, Field
+
+# LangMem Imports
+from langmem import AsyncClient, Client
 
 # Local imports
 from thesis2024.utils import init_llm_langsmith
 
+
+"""A function that takes in a user name and creates a UUID for the user if the name is not already present in a csv file.
+If it is, it returns the UUID associated with the user name.
+If it is not, it generates a new UUID and saves it in the csv file."""
+def get_user_uuid_and_create_thread_id(user: str) -> str:
+    """Get the UUID of the user."""
+    user_uuid = None
+    file_path = "data/langmem_data/user_uuid.csv"
+    if os.path.exists(file_path):
+        with open(file_path, "r") as file:
+            reader = csv.reader(file)
+            for row in reader:
+                if row[0] == user:
+                    user_uuid = row[1]
+                    break
+    if user_uuid is None:
+        user_uuid = str(uuid.uuid4())
+        with open(file_path, "a") as file:
+            writer = csv.writer(file)
+            writer.writerow([user, user_uuid])
+
+    user_name = f"{user}-{user_uuid[:4]}"
+
+    thread_id = uuid.uuid4()
+    return user_uuid, user_name, thread_id
 
 
 
@@ -85,16 +113,33 @@ async def create_student_formative_event_memory():
 class LongTermMemory:
     """Long-term memory."""
 
-    def __init__(self,
-                 user_id: str):
+    def __init__(self, student_name: str):
         """Initialize the long-term memory."""
-        self.oai_client = openai.AsyncClient()
         self.langmem_client = AsyncClient()
+        self.user_uuid, self.user_name, self.thread_id = get_user_uuid_and_create_thread_id(user=student_name)
 
-    def create_student_id(self):
-        """Create new student ID and save it in a file for future reference."""
+    async def save_conversation_step(self, student_query, TAS_response):
 
-        pass
+        conversation_step = [
+        {
+            "role": "user",
+            # Names are optional but should be consistent with a given user id, if provided
+            "name": self.username,
+            "content": "Hey johnny have i ever told you about my older bro steve?",
+            "metadata": {
+                "user_id": str(self.user_id),
+            },
+        },
+        {
+            "content": "no, you didn't, but I think he was friends with my younger sister sueann",
+            "role": "user",
+            "name": johnny_username,
+            "metadata": {
+                "user_id": str(johnny_user_id),
+            },
+        }]
+        self.langmem_client.add_messages(thread_id=self.thread_id, messages=conversation_step)
+
 
     def get_core_beliefs(self):
         """Get the core beliefs of the student."""
