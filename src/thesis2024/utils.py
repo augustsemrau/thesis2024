@@ -27,7 +27,7 @@ def init_llm_langsmith(llm_key = 3, temp = 0.5, langsmith_name: str = ""):
     _set_if_undefined("LANGCHAIN_API_KEY")
     os.environ["LANGMEM_API_URL"] = "https://long-term-memory-shared-for-6e67d43146acf1d71174b-vz4y4ooboq-uc.a.run.app"
     _set_if_undefined("LANGMEM_API_KEY")
-    _set_if_undefined("WOLFRAM_ALPHA_APPID")
+    # _set_if_undefined("WOLFRAM_ALPHA_APPID")
     _set_if_undefined("TAVILY_API_KEY")
 
     if llm_key == 3:
