@@ -2,7 +2,6 @@
 
 import time
 
-
 # Langchain imports
 from langchain import hub
 from langchain.agents import AgentExecutor, Tool, create_react_agent
@@ -22,7 +21,7 @@ from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 
 # Local imports
 from thesis2024.utils import init_llm_langsmith
-from thesis2024.models.memory import LongTermMemory
+from thesis2024.memory import LongTermMemory
 from thesis2024.models.coding_agent import CodingMultiAgent
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
@@ -204,6 +203,14 @@ class MultiAgentClass:
 
 
 
+
+
+
+
+
+
+
+
 """Teaching Agent System (TAS) for the thesis2024 project."""
 class TAS:
     """Class for the Teaching Agent System."""
@@ -212,35 +219,24 @@ class TAS:
                  llm_model,
                  version: str = "v0",
                  course: str = "Math1",
-                 longterm_memory=False,
-                 user_id: str=None,
+                 student_name=None,
+                 use_longterm_memory=False,
                  ):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
         self.course = course
-        self.longterm_memory = longterm_memory
-        self.user_id = user_id
+        self.use_longterm_memory = use_longterm_memory
+        # Init short term memory for the TAS
+        self.short_term_memory = ConversationBufferMemory(memory_key="chat_history",
+                                                          return_messages=False,
+                                                          ai_prefix="Teaching Assistant",
+                                                          human_prefix="Student")
+        # Init long term memory for the TAS
+        self.student_name = student_name # If student_name is None, the TAS will not use long-term memory
+        if student_name is not None:
+            self.long_term_memory_class = LongTermMemory(user_name=self.student_name)
         self.tas_prompt = self.build_tas_prompt()
         self.build_executor(ver=version)
-
-    """Initialize the memory for the Teaching Agent System."""
-    def init_memory(self):
-        """Initialize the memory for the Teaching Agent System."""
-        memory = ConversationBufferMemory(memory_key="chat_history",
-                                              return_messages=False,
-                                              ai_prefix="Teaching Assistant",
-                                              human_prefix="Student",
-                                              )
-        return memory
-
-    def init_longterm_memory(self):
-        """Initialize the long-term memory for the Teaching Agent System."""
-
-        longterm_memory_class = LongTermMemory(user_id=self.user_id)
-        core_beliefs = longterm_memory_class.get_core_beliefs()
-        formative_events = longterm_memory_class.get_formative_events()
-        longterm_memory = longterm_memory_class.get_longterm_memory()
-        return core_beliefs, formative_events, longterm_memory
 
     """Build the Teaching Agent System executor."""
     def build_executor(self, ver):
@@ -261,22 +257,23 @@ class TAS:
     """Prompt for the Teaching Agent System."""
     def build_tas_prompt(self):
         """Build the agent prompt."""
-        if self.longterm_memory:
-            core_beliefs, formative_events, longterm_memory = self.init_longterm_memory(user_id=self.user_id)
+        if self.use_longterm_memory:
+            # TODO implement long-term memory collection, all formative etc. should happen in AAS
+            facts = self.long_term_memory_class.get_user_memories()
+            # core_beliefs, formative_events, longterm_memory
             prompt_hub_template = hub.pull("augustsemrau/react-langmem-teaching-chat").template
             prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
             prompt = prompt_template.partial(course_name=self.course,
-                                            core_beliefs=core_beliefs,
-                                            formative_events=formative_events,
-                                            longterm_memory=longterm_memory,)
+                                             facts = facts,
+                                            # core_beliefs=core_beliefs,
+                                            # formative_events=formative_events,
+                                            # longterm_memory=longterm_memory,
+                                            )
         else:
             prompt_hub_template = hub.pull("augustsemrau/react-teaching-chat").template
             prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
             prompt = prompt_template.partial(course_name=self.course)
         return prompt
-
-
-
 
 
     """TAS v0 has one agent with no tools."""
@@ -286,19 +283,18 @@ class TAS:
         This version of the TAS is agenic, but has no tools.
         """
         tools = []  # NO TOOLS FOR v0
-        tas_v0_memory = self.init_memory()
+
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
                                        output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent,
                                            tools=tools,
-                                           memory=tas_v0_memory,
+                                           memory=self.short_term_memory,
                                            verbose=True,
                                            handle_parsing_errors=True)
         return tas_agent_executor
     """v0 is DONE"""
-
 
     """TODO TAS v1 has one agent using tools."""
     def build_tas_v1(self):
@@ -312,14 +308,13 @@ class TAS:
                  tool_class.build_coding_tool(),
                  tool_class.build_math_tool()]
 
-        tas_v1_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
                                        output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent,
                                            tools=tools,
-                                           memory=tas_v1_memory,
+                                           memory=self.short_term_memory,
                                            verbose=True,
                                            handle_parsing_errors=True)
         return tas_agent_executor
@@ -334,14 +329,13 @@ class TAS:
         search_agent = agent_class.build_search_agent()
         tools = [search_agent]
 
-        tas_v2_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
                                        output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent,
                                            tools=tools,
-                                           memory=tas_v2_memory,
+                                           memory=self.short_term_memory,
                                            verbose=True,
                                            handle_parsing_errors=True)
         return tas_agent_executor
@@ -356,14 +350,13 @@ class TAS:
         coding_multi_agent = multi_agent_class.build_coding_multi_agent()
         tools = [coding_multi_agent]
 
-        tas_v3_memory = self.init_memory()
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
                                        output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent,
                                            tools=tools,
-                                           memory=tas_v3_memory,
+                                           memory=self.short_term_memory,
                                            verbose=True,
                                            handle_parsing_errors=True)
         return tas_agent_executor
@@ -371,20 +364,15 @@ class TAS:
 
 
     """Predict function for invoking the initiated TAS."""
-    # TODO Implement Long-Term Memory
     def predict(self, query):
         """Invoke the Teaching Agent System."""
         print("\n\nUser Query:", query)
         response = self.tas_executor.invoke({"input": query})[self.output_tag]
         print("\n\nTAS Memory:")
-        print(self.tas_executor.memory)#.chat_memory.messages)
-        # print(messages_to_dict(self.tas_executor.memory.chat_memory.messages))
-        if self.longterm_memory:
-            print("Saving long-term memory.")
-            # TODO Implement saving of long-term memory
+        print(f"\n{self.tas_executor.memory}\n")
+        if self.student_name is not None:
+            self.long_term_memory_class.save_conversation_step(user_query=query, llm_response=response)
         return response
-
-
 
 
 
@@ -438,12 +426,13 @@ if __name__ == '__main__':
     tas = TAS(llm_model=llm_model,
               version=test_version,
               course="IntroToMachineLearning",
-              longterm_memory=False,
-              user_id=None)
+              student_name="AugustSemrau1",
+              use_longterm_memory=False,
+              )
 
     res = tas.predict("Hello, I am August! Today, I would like to learn about the three most important supervised learning algorithms.")
     print("\n\nResponse: ", res)
-    res = tas.predict("What is the name of the person who invented this optimization technique?")
+    res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
     print("\n\nResponse: ", res)
     res = tas.predict("Thank you for the help, have a nice day!")
     print("\n\nResponse: ", res)
