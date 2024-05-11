@@ -258,9 +258,8 @@ class TAS:
     def build_tas_prompt(self):
         """Build the agent prompt."""
         if self.use_longterm_memory:
-            # TODO implement long-term memory collection, all formative etc. should happen in AAS
-            facts = self.long_term_memory_class.get_user_memories()
-            # core_beliefs, formative_events, longterm_memory
+            facts = self.long_term_memory_class.get_user_memories(query="")
+            # TODO Advanced memory types such as core_beliefs, formative_events, longterm_memory
             prompt_hub_template = hub.pull("augustsemrau/react-langmem-teaching-chat").template
             prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
             prompt = prompt_template.partial(course_name=self.course,

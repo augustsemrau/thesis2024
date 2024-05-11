@@ -5,20 +5,13 @@ import uuid
 import csv
 import os
 
-
-from typing import List
-from pydantic import BaseModel, Field
+# Local imports
+from thesis2024.utils import init_llm_langsmith
 
 # LangMem Imports
 from langmem import AsyncClient, Client
 
-# Local imports
-from thesis2024.utils import init_llm_langsmith
 
-
-"""A function that takes in a user name and creates a UUID for the user if the name is not already present in a csv file.
-If it is, it returns the UUID associated with the user name.
-If it is not, it generates a new UUID and saves it in the csv file."""
 def get_user_uuid_and_create_thread_id(user: str) -> str:
     """Get the UUID of the user if already existing, otherwise create and store new id."""
     user_uuid = None
@@ -44,75 +37,20 @@ def get_user_uuid_and_create_thread_id(user: str) -> str:
 
 
 
-class Student(BaseModel):
-    """A student in the system."""
-
-    name: str = Field(default=None, description="The name of the student.")
-    university: str = Field(
-        default=None, description="The name of the university the student studies at.")
-    current_education: str = Field(
-        default=None, description="The name of the current education the student is undertaking.")
-    current_year: int = Field(
-        default=None, description="The current year of the student's education.")
-
-class UserProfile(BaseModel):
-    """A user profile in the system."""
-
-    preferred_name: str = Field(default=None, description="The users's name.")
-    summary: str = Field(
-        default="",
-        description="A quick summary of how the user would describe themselves.",)
-    interests: List[str] = Field(
-        default_factory=list,
-        description="Short (two to three word) descriptions of areas of particular interest for the user. This can be a concept, activity, or idea. Favor broad interests over specific ones.",)
-    education: List[Student] = Field(
-        default_factory=Student,
-        description="A summary of prior and present education.",)
-    other_info: List[str] = Field(
-        default_factory=list,
-        description="",)
-
-async def create_student_profile_memory():
-    langmem_client = AsyncClient()
-    student_profile_memory = await langmem_client.create_memory_function(
-        UserProfile, target_type="user_state")
-
-class CoreBelief(BaseModel):
-    belief: str = Field(
-        default="",
-        description="The belief the user has about the world, themselves, or anything else.",)
-    why: str = Field(description="Why the user believes this.")
-    context: str = Field(
-        description="The raw context from the conversation that leads you to conclude that the user believes this.")
-
-async def create_student_belief_memory():
-    langmem_client = AsyncClient()
-    belief_function = await langmem_client.create_memory_function(
-        CoreBelief, target_type="user_append_state")
-
-class FormativeEvent(BaseModel):
-    event: str = Field(
-        default="",
-        description="The event that occurred. Must be important enough to be formative for the user.",)
-    impact: str = Field(default="", description="How this event influenced the user.")
-# oai_client = openai.AsyncClient()
-async def create_student_formative_event_memory():
-    langmem_client = AsyncClient()
-
-    event_function = await langmem_client.create_memory_function(
-        FormativeEvent, target_type="user_append_state")
-
-
-
 class LongTermMemory:
-    """Long-term memory."""
+    """Long-Term memory."""
 
     def __init__(self, user_name: str):
         """Initialize the long-term memory."""
-        self.langmem_client = AsyncClient()
-        self.user_uuid, self.user_name, self.thread_id = get_user_uuid_and_create_thread_id(user=user_name)
+        self.async_client = AsyncClient()
+        self.client = Client()
+        self.user_id, self.user_name, self.thread_id = get_user_uuid_and_create_thread_id(user=user_name)
 
-    async def save_conversation_step(self, user_query, llm_response):
+    def get_user_data(self):
+        """Retrieve data on the user."""
+        return self.client.get_user(user_id=self.user_id)
+
+    def save_conversation_step(self, user_query, llm_response):
         """Save a conversation step in the long-term memory."""
         conversation_step = [
         {
@@ -125,29 +63,24 @@ class LongTermMemory:
             "content": llm_response,
             "role": "assistant",
         }]
-        await self.langmem_client.add_messages(thread_id=self.thread_id, messages=conversation_step)
+        self.client.add_messages(thread_id=self.thread_id, messages=conversation_step)
+        self.client.trigger_all_for_thread(thread_id=self.thread_id)
 
-    async def get_user_memories(self, query: str):
+    def get_user_memories(self, query: str):
         """Retrieve long term memories for the relevant user."""
-        # TODO should only retrieve something if there are in fact memories
-        memories = await self.langmem_client.query_user_memory(
-        user_id=self.user_uuid, text=query, k=3
-        )
-        facts = "\n".join([mem["text"] for mem in memories["memories"]])
+        memories = self.client.query_user_memory(
+                                                user_id=self.user_id,
+                                                text=query,
+                                                k=10,)
+        # print(memories)
+        # facts = "\n".join([mem["text"] for mem in memories["memories"]])
+        # If no specific memory query is given, we sort by importance, else by relevance
+        if query == "":
+            sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["importance"], reverse=True)
+        else:
+            sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["relevance"], reverse=True)
+        facts = ".\n".join([mem["text"] for mem in sorted_memories])
         return facts
-
-    def get_core_beliefs(self):
-        """Get the core beliefs of the student."""
-        pass
-
-    def get_formative_events(self):
-        """Get the formative events of the student."""
-        pass
-
-    def get_longterm_memory(self):
-        """Get the long-term memory of the student."""
-        pass
-
 
 
 
