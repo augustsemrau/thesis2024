@@ -4,8 +4,9 @@
 import uuid
 import csv
 import os
-from typing import List
 
+
+from typing import List
 from pydantic import BaseModel, Field
 
 # LangMem Imports
@@ -19,9 +20,10 @@ from thesis2024.utils import init_llm_langsmith
 If it is, it returns the UUID associated with the user name.
 If it is not, it generates a new UUID and saves it in the csv file."""
 def get_user_uuid_and_create_thread_id(user: str) -> str:
-    """Get the UUID of the user."""
+    """Get the UUID of the user if already existing, otherwise create and store new id."""
     user_uuid = None
-    file_path = "data/langmem_data/user_uuid.csv"
+    cwd_path = os.getcwd()
+    file_path = cwd_path + "/data/langmem_data/user_uuid.csv"
     if os.path.exists(file_path):
         with open(file_path, "r") as file:
             reader = csv.reader(file)
@@ -53,7 +55,6 @@ class Student(BaseModel):
     current_year: int = Field(
         default=None, description="The current year of the student's education.")
 
-
 class UserProfile(BaseModel):
     """A user profile in the system."""
 
@@ -76,10 +77,6 @@ async def create_student_profile_memory():
     student_profile_memory = await langmem_client.create_memory_function(
         UserProfile, target_type="user_state")
 
-
-
-
-
 class CoreBelief(BaseModel):
     belief: str = Field(
         default="",
@@ -87,14 +84,11 @@ class CoreBelief(BaseModel):
     why: str = Field(description="Why the user believes this.")
     context: str = Field(
         description="The raw context from the conversation that leads you to conclude that the user believes this.")
+
 async def create_student_belief_memory():
     langmem_client = AsyncClient()
     belief_function = await langmem_client.create_memory_function(
         CoreBelief, target_type="user_append_state")
-
-
-
-
 
 class FormativeEvent(BaseModel):
     event: str = Field(
@@ -113,33 +107,34 @@ async def create_student_formative_event_memory():
 class LongTermMemory:
     """Long-term memory."""
 
-    def __init__(self, student_name: str):
+    def __init__(self, user_name: str):
         """Initialize the long-term memory."""
         self.langmem_client = AsyncClient()
-        self.user_uuid, self.user_name, self.thread_id = get_user_uuid_and_create_thread_id(user=student_name)
+        self.user_uuid, self.user_name, self.thread_id = get_user_uuid_and_create_thread_id(user=user_name)
 
-    async def save_conversation_step(self, student_query, TAS_response):
-
+    async def save_conversation_step(self, user_query, llm_response):
+        """Save a conversation step in the long-term memory."""
         conversation_step = [
         {
+            "content": user_query,
             "role": "user",
-            # Names are optional but should be consistent with a given user id, if provided
-            "name": self.username,
-            "content": "Hey johnny have i ever told you about my older bro steve?",
-            "metadata": {
-                "user_id": str(self.user_id),
-            },
+            "name": self.user_name,
+            "metadata": {"user_id": self.user_id,},
         },
         {
-            "content": "no, you didn't, but I think he was friends with my younger sister sueann",
-            "role": "user",
-            "name": johnny_username,
-            "metadata": {
-                "user_id": str(johnny_user_id),
-            },
+            "content": llm_response,
+            "role": "assistant",
         }]
-        self.langmem_client.add_messages(thread_id=self.thread_id, messages=conversation_step)
+        await self.langmem_client.add_messages(thread_id=self.thread_id, messages=conversation_step)
 
+    async def get_user_memories(self, query: str):
+        """Retrieve long term memories for the relevant user."""
+        # TODO should only retrieve something if there are in fact memories
+        memories = await self.langmem_client.query_user_memory(
+        user_id=self.user_uuid, text=query, k=3
+        )
+        facts = "\n".join([mem["text"] for mem in memories["memories"]])
+        return facts
 
     def get_core_beliefs(self):
         """Get the core beliefs of the student."""
