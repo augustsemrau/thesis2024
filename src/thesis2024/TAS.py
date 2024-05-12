@@ -219,24 +219,29 @@ class TAS:
                  llm_model,
                  version: str = "v0",
                  course: str = "Math1",
-                 student_name=None,
-                 use_longterm_memory=False,
+                 student_id=None,
+                 student_name: str = "August",
                  ):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
         self.course = course
-        self.use_longterm_memory = use_longterm_memory
+        self.student_id = student_id # If student_id is None, the TAS will not use long-term memory
+        self.student_name = student_name
+
         # Init short term memory for the TAS
         self.short_term_memory = ConversationBufferMemory(memory_key="chat_history",
                                                           return_messages=False,
                                                           ai_prefix="Teaching Assistant",
                                                           human_prefix="Student")
+
         # Init long term memory for the TAS
-        self.student_name = student_name # If student_name is None, the TAS will not use long-term memory
-        if student_name is not None:
-            self.long_term_memory_class = LongTermMemory(user_name=self.student_name)
+        if self.student_id is not None:
+            self.long_term_memory_class = LongTermMemory(user_name=self.student_id)
+
         self.tas_prompt = self.build_tas_prompt()
         self.build_executor(ver=version)
+
+
 
     """Build the Teaching Agent System executor."""
     def build_executor(self, ver):
@@ -255,23 +260,18 @@ class TAS:
             self.output_tag = "response"
 
     """Prompt for the Teaching Agent System."""
-    def build_tas_prompt(self):
+    def build_tas_prompt(self, ltm_query=""):
         """Build the agent prompt."""
-        if self.use_longterm_memory:
-            facts = self.long_term_memory_class.get_user_memories(query="")
-            # TODO Advanced memory types such as core_beliefs, formative_events, longterm_memory
-            prompt_hub_template = hub.pull("augustsemrau/react-langmem-teaching-chat").template
-            prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-            prompt = prompt_template.partial(course_name=self.course,
-                                             facts = facts,
-                                            # core_beliefs=core_beliefs,
-                                            # formative_events=formative_events,
-                                            # longterm_memory=longterm_memory,
-                                            )
-        else:
-            prompt_hub_template = hub.pull("augustsemrau/react-teaching-chat").template
-            prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-            prompt = prompt_template.partial(course_name=self.course)
+        # TODO Advanced memory types such as core_beliefs, formative_events, longterm_memory
+        facts = ""
+        if self.student_id is not None:
+            facts = self.long_term_memory_class.get_user_memories(query=ltm_query)
+        prompt_hub_template = hub.pull("augustsemrau/react-teaching-chat").template
+        prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
+        prompt = prompt_template.partial(course_name=self.course,
+                                        student_name=self.student_name,
+                                        ltm_facts=facts,
+                                        )
         return prompt
 
 
@@ -369,7 +369,7 @@ class TAS:
         response = self.tas_executor.invoke({"input": query})[self.output_tag]
         print("\n\nTAS Memory:")
         print(f"\n{self.tas_executor.memory}\n")
-        if self.student_name is not None:
+        if self.student_id is not None:
             self.long_term_memory_class.save_conversation_step(user_query=query, llm_response=response)
         return response
 
@@ -417,17 +417,17 @@ This is the conversation so far:
 if __name__ == '__main__':
 
     # test_version = "baseline"
-    test_version = "v1"
+    tas_version = "v1"
     time_now = time.strftime("%Y.%m.%d-%H.%M.")
-    langsmith_name = test_version + " TAS TEST " + time_now
+    langsmith_name = tas_version + " TAS TEST " + time_now
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
 
     tas = TAS(llm_model=llm_model,
-              version=test_version,
-              course="IntroToMachineLearning",
-              student_name="AugustSemrau1",
-              use_longterm_memory=False,
-              )
+            version=tas_version,
+            course="IntroToMachineLearning",
+            student_name="August",
+            student_id="AugustSemrau1"
+            )
 
     res = tas.predict("Hello, I am August! Today, I would like to learn about the three most important supervised learning algorithms.")
     print("\n\nResponse: ", res)

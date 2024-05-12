@@ -13,13 +13,16 @@ from thesis2024.models.SSA import SSA
 @cl.on_chat_start
 def main():
     """Instantiate required classes for the user session."""
-    version = "v1"
+    tas_version = "v1"
     time_now = time.strftime("%Y.%m.%d-%H.%M.")
-    langsmith_name = version + " Chainlit-Conversation " + time_now
-    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name=langsmith_name)
+    langsmith_name = tas_version + " Chainlit-Conversation " + time_now
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
     tas = TAS(llm_model=llm_model,
-              version=version,
-              course="Math1")
+            version=tas_version,
+            course="IntroToMachineLearning",
+            student_name="August",
+            student_id="AugustSemrau1"
+            )
     cl.user_session.set("tas", tas)
 
 @cl.on_message
