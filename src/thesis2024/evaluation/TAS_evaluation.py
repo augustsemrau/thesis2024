@@ -69,14 +69,14 @@ class TasEvaluator:
         self.correctness_output = self.correctness(conversation=conversation)
         self.relevance_output = self.relevance(conversation=conversation)
         self.clarity_output = self.clarity(conversation=conversation)
-        self.funnyness_output = self.funnyness(conversation=conversation)
+        self.repeats_output = self.repeats(conversation=conversation)
         self.adaptability_output = self.adaptability(conversation=conversation)
         self.politeness_output = self.politeness(conversation=conversation)
 
         return {"Correctness": self.correctness_output,
                 "Relevance": self.relevance_output,
                 "Clarity": self.clarity_output,
-                "Funnyness": self.funnyness_output,
+                "Repeats": self.repeats_output,
                 "Adaptability": self.adaptability_output,
                 "Politeness": self.politeness_output,
                 "Conversation": conversation}
@@ -88,7 +88,7 @@ class TasEvaluator:
         evalulators = [self.correctness_grade,
                        self.relevance_grade,
                        self.clarity_grade,
-                       self.funnyness_grade,
+                       self.repeats_grade,
                        self.adaptability_grade,
                        self.politeness_grade,
                        other_metrics.is_answered,
@@ -191,18 +191,22 @@ Better adaptability should be given a higher score, and lack of adaptability sho
         return {"key": "Politeness", "score": float(self.politeness_output['Grade'])}
 
     """Evaluate funnyness."""
-    def funnyness(self, conversation):
+    def repeats(self, conversation):
         """Evaluate funnyness."""
-        criteria = "Funnyness"
-        criteria_des = "How funny is teaching assistant, and is it making any jokes? The more funny, the higher the score."
+        criteria = "Repeats"
+        criteria_des = """
+Avoiding repeating the same information multiple times. If so, rephrasing and contextualising the information.
+How well is the Teaching Assistant conveying the information without repeating itself? 
+No repeating of information or showing the ability to rephrase the same information in new ways should be given a higher score, repeating information should be given a lower score.
+"""
         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
                                         criteria_des=criteria_des)
         chain = prompt | self.eval_model | JsonOutputParser()
         return chain.invoke({"input": conversation})
-    def funnyness_grade(self, run: Run, example: Example) -> dict:
+    def repeats_grade(self, run: Run, example: Example) -> dict:
         """Output correctness grade to Langsmith."""
-        return {"key": "Funnyness", "score": float(self.funnyness_output['Grade'])}
+        return {"key": "Repeats", "score": float(self.repeats_output['Grade'])}
 
 
 
