@@ -208,21 +208,16 @@ class LongTermMemory:
     # TODO Test thread summary retrieval
     def get_thread_summaries(self):
         """Retrieve the summaries for all threads."""
-        thread_summaries = []
+        thread_summaries = {}
         for thread_id in self.past_thread_ids:
-            thread_summary = self.client.get_thread_memory(thread_id=thread_id, memory_function_id=self.thread_summary_function["id"])
-            thread_summaries.append(thread_summary)
+            try:
+                thread_summary = self.client.get_thread_memory(thread_id=thread_id, memory_function_id=self.thread_summary_function["id"])
+                thread_summaries[thread_id] = thread_summary
+            except Exception:
+                print(f"No memories for thread id {thread_id}")
+                continue
         print(thread_summaries)
-        # threads = self.client.list_threads()
-        # threads_data = []
-        # for thread in threads:
-        #     threads_data.append(self.client.list_thread_memory(thread["id"])[0])
-        # print(threads_data)
-        # for thread_data in threads_data:
-        #     print(thread_data)
-        #     thread_data["summary"] = self.thread_summary_function["text"]
-        # thread_summaries = ".\n".join([thread_data["summary"] for thread_data in threads_data])
-        # return thread_summaries
+
 
 
 
