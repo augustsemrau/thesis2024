@@ -16,7 +16,7 @@ def main():
     tas_version = "v1"
     time_now = time.strftime("%Y.%m.%d-%H.%M.")
     langsmith_name = tas_version + " Chainlit-Conversation " + time_now
-    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name=langsmith_name)
+    llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name=langsmith_name)
     tas = TAS(llm_model=llm_model,
             version=tas_version,
             course="DeepLearning",#"IntroToMachineLearning",

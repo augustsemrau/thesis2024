@@ -34,6 +34,8 @@ def init_llm_langsmith(llm_key = 3, temp = 0.5, langsmith_name: str = ""):
         llm_ver = "gpt-3.5-turbo-0125"
     elif llm_key == 4:
         llm_ver = "gpt-4-turbo-2024-04-09"
+    elif llm_key == 40:
+        llm_ver = "gpt-4o-2024-05-13"
 
     if langsmith_name is not None:
         os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
