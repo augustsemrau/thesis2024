@@ -16,12 +16,12 @@ def main():
     tas_version = "v1"
     time_now = time.strftime("%Y.%m.%d-%H.%M.")
     langsmith_name = tas_version + " Chainlit-Conversation " + time_now
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
+    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name=langsmith_name)
     tas = TAS(llm_model=llm_model,
             version=tas_version,
-            course="IntroToMachineLearning",
+            course="DeepLearning",#"IntroToMachineLearning",
             student_name="August",
-            student_id="AugustSemrau1"
+            student_id="AugustSemrau001"
             )
     cl.user_session.set("tas", tas)
 

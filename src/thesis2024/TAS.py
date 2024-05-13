@@ -265,7 +265,7 @@ class TAS:
         # TODO Advanced memory types such as core_beliefs, formative_events, longterm_memory
         facts = ""
         if self.student_id is not None:
-            facts = self.long_term_memory_class.get_user_memories(query=ltm_query)
+            facts = self.long_term_memory_class.get_user_semantic_memories(query=ltm_query)
         prompt_hub_template = hub.pull("augustsemrau/react-teaching-chat").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
         prompt = prompt_template.partial(course_name=self.course,
@@ -431,10 +431,10 @@ if __name__ == '__main__':
 
     res = tas.predict("Hello, I am August! Today, I would like to learn about the three most important supervised learning algorithms.")
     print("\n\nResponse: ", res)
-    res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
-    print("\n\nResponse: ", res)
-    res = tas.predict("Thank you for the help, have a nice day!")
-    print("\n\nResponse: ", res)
+    # res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
+    # print("\n\nResponse: ", res)
+    # res = tas.predict("Thank you for the help, have a nice day!")
+    # print("\n\nResponse: ", res)
 
 
 
