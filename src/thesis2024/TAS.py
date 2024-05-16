@@ -115,6 +115,8 @@ class ToolClass:
                         )
         return math_tool
 
+
+
 """Agents for the Teaching Agent System (TAS) v2."""
 class AgentClass:
     """Class for the agents used in the Teaching Agent System."""
@@ -295,7 +297,8 @@ class TAS:
         return tas_agent_executor
     """v0 is DONE"""
 
-    """TODO TAS v1 has one agent using tools."""
+    """TAS v1 has one agent using tools."""
+    # TODO Agent actions are not working as they should hmm
     def build_tas_v1(self):
         """Build the Teaching Agent System version 1.
 
@@ -305,7 +308,8 @@ class TAS:
         tools = [tool_class.build_search_tool(),
                  tool_class.build_retrieval_tool(course_name=self.course),
                  tool_class.build_coding_tool(),
-                 tool_class.build_math_tool()]
+                #  tool_class.build_math_tool(),
+                 ]
 
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
