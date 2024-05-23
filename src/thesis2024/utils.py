@@ -2,6 +2,7 @@
 
 import os
 import getpass
+import time
 
 from langchain_openai import ChatOpenAI
 
@@ -40,7 +41,8 @@ def init_llm_langsmith(llm_key = 3, temp = 0.5, langsmith_name: str = ""):
     if langsmith_name is not None:
         os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
-        os.environ["LANGCHAIN_PROJECT"] = llm_ver + "_Temp: " + str(temp) + "_" + langsmith_name
+        time_now = time.strftime("%Y.%m.%d-%H.%M.")
+        os.environ["LANGCHAIN_PROJECT"] = langsmith_name + "_LLM:" + llm_ver + "_Temp: " + str(temp) + "_Timestamp:" + time_now
 
     llm_model = ChatOpenAI(model_name=llm_ver, temperature=temp)
     return llm_model

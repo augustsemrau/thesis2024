@@ -30,7 +30,6 @@ class Reflection(BaseModel):
     missing: str = Field(description="Critique of what is missing.")
     superfluous: str = Field(description="Critique of what is superfluous")
 
-
 class AnswerQuestion(BaseModel):
     """Answer the question. Provide an answer, reflection, and then follow up with search queries to improve the answer."""
 
@@ -149,6 +148,7 @@ class Reflexion:
         revision_validator = PydanticToolsParser(tools=[ReviseAnswer])
 
         revisor = ResponderWithRetries(runnable=revision_chain, validator=revision_validator)
+        return revisor
 
     def create_tool_node(self):
         def run_queries(search_queries: list[str], **kwargs):
@@ -208,6 +208,10 @@ class Reflexion:
 
     def predict(self, query: str):
         """Generate a response to a user query using Reflexion."""
+        # events = self.graph.stream(
+        #     [HumanMessage(content=query)],
+        #     stream_mode="values",
+        # )
         events = self.graph.stream(
             [HumanMessage(content=query)],
             stream_mode="values",
@@ -220,13 +224,17 @@ class Reflexion:
 if __name__ == "__main__":
     # Test the Reflexion class
 
-    # Initialize the LLM model
+    # Initialize the LLM model5
     time_now = time.strftime("%Y.%m.%d-%H.%M.")
     langsmith_name = "Reflexion Test " + time_now
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
 
     reflexion_class = Reflexion(llm_model=llm_model)
 
-    user_query = "Please explain the concept of a neural network."
+    user_query = "Please write a section for my thesis about LLM agents, ReAct and agent-related prompt engineering.The section should be written in acedemic language, and can include math and code."
     response = reflexion_class.predict(query=user_query)
+    print(response)
+    for i, step in enumerate(response):
+        print(f"Step {i}")
+        step[-1].pretty_print()
 
