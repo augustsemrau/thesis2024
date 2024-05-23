@@ -3,6 +3,9 @@
 # Langchain imports
 from langchain import hub
 from langchain.agents import AgentExecutor, Tool, create_react_agent
+from langchain.output_parsers import PydanticOutputParser
+from langchain_core.output_parsers import StrOutputParser
+from langchain.agents.react.output_parser import ReActOutputParser
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage
@@ -168,7 +171,7 @@ class TAS:
         facts = "Nothing"
         if self.student_id is not None:
             facts = self.long_term_memory_class.get_user_semantic_memories(query=ltm_query)
-        prompt_hub_template = hub.pull("augustsemrau/react-tas-prompt").template
+        prompt_hub_template = hub.pull("augustsemrau/react-tas-prompt-2").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
         prompt = prompt_template.partial(student_name=student_name,
                                          course_name=course_name,
@@ -176,6 +179,9 @@ class TAS:
                                          learning_preferences=learning_preferences,
                                          ltm_facts=facts,
                                         )
+        # prompt_hub_template = hub.pull("hwchase17/react").template
+        # prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
+        # prompt = prompt_template.partial()
         return prompt
 
     def build_nonagenic_baseline(self):
@@ -192,10 +198,9 @@ This is the conversation so far:
 {chat_history}"""
         prompt = PromptTemplate.from_template(template=prompt_template)
         #  prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
-        baseline_memory = self.init_memory()
         baseline_chain = ConversationChain(llm=self.llm_model,
                                 prompt=prompt,
-                                memory=baseline_memory,
+                                memory=self.short_term_memory,
                                 #output_parser=BaseLLMOutputParser(),
                                 verbose=False,)
         return baseline_chain
@@ -207,20 +212,20 @@ This is the conversation so far:
         """
         tool_class = ToolClass()
         tools = [tool_class.build_search_tool(),
-                 tool_class.build_retrieval_tool(course_name=self.course),
-                 tool_class.build_coding_tool(),
+                #  tool_class.build_retrieval_tool(course_name=self.course),
+                #  tool_class.build_coding_tool(),
                 #  tool_class.build_math_tool(),
                  ]
 
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
-                                       output_parser=None)
+                                       output_parser=None)#ReActOutputParser())#PydanticOutputParser())#None)#StrOutputParser())
         tas_agent_executor = AgentExecutor(agent=tas_agent,
                                            tools=tools,
                                            memory=self.short_term_memory,
                                            verbose=True,
-                                           handle_parsing_errors=True)
+                                           handle_parsing_errors=True)#"Check your output and make sure it conforms, use the Action/Action Input syntax")#True)
         return tas_agent_executor
 
 
@@ -229,8 +234,8 @@ This is the conversation so far:
         """Invoke the Teaching Agent System."""
         print("\n\nUser Query:", query)
         response = self.tas_executor.invoke({"input": query})[self.output_tag]
-        print("\n\nTAS Memory:")
-        print(f"\n{self.tas_executor.memory}\n")
+        # print("\n\nTAS Memory:")
+        # print(f"\n{self.tas_executor.memory}\n")
         if self.student_id is not None:
             self.long_term_memory_class.save_conversation_step(user_query=query, llm_response=response)
         return response
@@ -255,13 +260,15 @@ This is the conversation so far:
 if __name__ == '__main__':
 
 
-    llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name="TAS")
+    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="TAS")
 
     student_name = "August"
     student_course = "IntroToMachineLearning"
     student_subject = "Linear Regression"
     student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
-    student_query = f"Hello, I am {student_name}! I am studying the course {student_course} and am trying to learn about the subject {student_subject}. Please explain me this subject."
+    # student_learning_preferences = "I prefer code examples in order to understand technical concepts"
+    # student_learning_preferences = "I prefer text-based explanations and metaphors in order to understand technical concepts"
+    student_query = f"Hello, I am {student_name}!\nI am studying the course {student_course} and am trying to learn about the subject {student_subject}.\nMy learning preferences are described as the following: {student_learning_preferences}.\nPlease explain me this subject."
     tas = TAS(llm_model=llm_model,
             baseline_bool=False,
             course=student_course,
@@ -272,11 +279,14 @@ if __name__ == '__main__':
             )
 
     res = tas.predict(query=student_query)
-    print("\n\nResponse: ", res)
+    print("\n\nResponse:\n", res)
     # res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
     # print("\n\nResponse: ", res)
+    res = tas.predict("I'm not sure I get it completely. Can you explain it in a different way?")
+    print("\n\nResponse:\n", res)
+
     res = tas.predict("Thank you for the help, have a nice day!")
-    print("\n\nResponse: ", res)
+    print("\n\nResponse:\n", res)
 
 
 
