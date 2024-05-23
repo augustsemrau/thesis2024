@@ -1,7 +1,5 @@
 """Teaching Agent System (TAS) for the thesis2024 project."""
 
-import time
-
 # Langchain imports
 from langchain import hub
 from langchain.agents import AgentExecutor, Tool, create_react_agent
@@ -35,7 +33,7 @@ class ToolClass:
         """Initialize the tool class."""
         pass
 
-    """Internet Search Tool using DuckDuckGo API."""
+    """Internet Search Tool using Tavily API."""
     def build_search_tool(self):
         """Build the search tool."""
         # search_func = DuckDuckGoSearchAPIWrapper()
@@ -117,109 +115,13 @@ class ToolClass:
 
 
 
-"""Agents for the Teaching Agent System (TAS) v2."""
-class AgentClass:
-    """Class for the agents used in the Teaching Agent System."""
-
-    def __init__(self,
-                 llm_model,
-                 tool_class):
-        """Initialize the agent class."""
-        self.llm_model = llm_model
-        self.tool_class = tool_class
-
-    """Prompt for the Agent Tools."""
-    def build_tool_agent_prompt(self):
-        """Build the agent prompt."""
-        prompt_hub_template = hub.pull("augustsemrau/react-agent-tool").template
-        prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-        prompt = prompt_template.partial()
-        return prompt
-
-
-    def build_search_agent(self):
-        """Build the search agent."""
-        tool_class = ToolClass()
-        tools = [tool_class.build_search_tool()]
-
-        tas_agent = create_react_agent(llm=self.llm_model,
-                                       tools=tools,
-                                       prompt=self.build_tool_agent_prompt(),
-                                       output_parser=None)
-        # tas_v1_memory = self.init_memory()
-        tas_agent_executor = AgentExecutor(agent=tas_agent,
-                                           tools=tools,
-                                        #    memory=tas_v1_memory,
-                                           verbose=True,
-                                           handle_parsing_errors=True)
-        def search_agent_function(query: str):
-            """Search tool function."""
-            output = tas_agent_executor.invoke({"input": query})["output"]
-            return output
-        search_agent = StructuredTool.from_function(
-                                        name="Search Agent",
-                                        func=search_agent_function,
-                                        description="Useful when you need to answer questions about current events or the current state of the world."
-                                        )
-        return search_agent
-
-
-
-    def build_retrieval_agent(self):
-        """Build the retrieval agent."""
-        retrieval_tool = self.tool_class.build_retrieval_tool()
-        retrieval_agent = StructuredTool.from_function(
-                            name="Retrieval Agent",
-                            func=retrieval_tool.invoke,
-                            description="Useful when you need to answer questions using relevant course material."
-                            )
-        return retrieval_agent
-
-"""Multi-Agent systems for the Teaching Agent System (TAS) v3."""
-class MultiAgentClass:
-    """Class for the multi-agent systems used in the Teaching Agent System."""
-
-    def __init__(self, llm_model):
-        """Initialize the agent class."""
-        self.llm_model = llm_model
-
-
-    def build_coding_multi_agent(self):
-        """Coding multi-agent as a tool."""
-        coding_subgraph_class = CodingMultiAgent(llm_model=self.llm_model)
-        coding_graph = coding_subgraph_class.instanciate_graph()
-        def coding_function(query: str):
-            """Coding tool function."""
-            output = coding_graph.invoke({"messages": [HumanMessage(content=query)]},
-                                        {"recursion_limit": 100})
-            return output["messages"][-1].content
-        coding_multiagent = StructuredTool.from_function(
-                                    func=coding_function,
-                                    name="Coding Tool",
-                                    description="Useful when you need to answer questions using a coded example."
-                                    )
-        return coding_multiagent
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 """Teaching Agent System (TAS) for the thesis2024 project."""
 class TAS:
     """Class for the Teaching Agent System."""
 
     def __init__(self,
                  llm_model,
-                 version: str = "v0",
+                 baseline = False,
                  course: str = "Math1",
                  student_id=None,
                  student_name: str = "August",
@@ -241,22 +143,14 @@ class TAS:
             self.long_term_memory_class = LongTermMemory(user_name=self.student_id)
 
         self.tas_prompt = self.build_tas_prompt()
-        self.build_executor(ver=version)
-
-
+        self.build_executor(ver=baseline)
 
     """Build the Teaching Agent System executor."""
     def build_executor(self, ver):
         """Build the Teaching Agent System executor."""
-        self.output_tag = "output"
-        if ver == "v0":
-            self.tas_executor = self.build_tas_v0()
-        elif ver == "v1":
+        if not ver:
             self.tas_executor = self.build_tas_v1()
-        elif ver == "v2":
-            self.tas_executor = self.build_tas_v2()
-        elif ver == "v3":
-            self.tas_executor = self.build_tas_v3()
+            self.output_tag = "output"
         else:
             self.tas_executor = self.build_nonagenic_baseline()
             self.output_tag = "response"
@@ -276,33 +170,32 @@ class TAS:
                                         )
         return prompt
 
+    def build_nonagenic_baseline(self):
+        """Baseline LLM Chain Teaching System."""
+        prompt = {
+            "chat_history": {},
+            "input": input,
+            "system_message": ".",
+        }
+        prompt_template = """You are a teaching assistant. You are responsible for answering questions and inquiries that the student might have.
+Here is the student's query, which you MUST respond to:
+{input}
+This is the conversation so far:
+{chat_history}"""
+        prompt = PromptTemplate.from_template(template=prompt_template)
+        #  prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
+        baseline_memory = self.init_memory()
+        baseline_chain = ConversationChain(llm=self.llm_model,
+                                prompt=prompt,
+                                memory=baseline_memory,
+                                #output_parser=BaseLLMOutputParser(),
+                                verbose=False,)
+        return baseline_chain
 
-    """TAS v0 has one agent with no tools."""
-    def build_tas_v0(self):
-        """Build the Teaching Agent System version 0.
+    def build_tas(self):
+        """Build the Teaching Agent System (TAS).
 
-        This version of the TAS is agenic, but has no tools.
-        """
-        tools = []  # NO TOOLS FOR v0
-
-        tas_agent = create_react_agent(llm=self.llm_model,
-                                       tools=tools,
-                                       prompt=self.tas_prompt,
-                                       output_parser=None)
-        tas_agent_executor = AgentExecutor(agent=tas_agent,
-                                           tools=tools,
-                                           memory=self.short_term_memory,
-                                           verbose=True,
-                                           handle_parsing_errors=True)
-        return tas_agent_executor
-    """v0 is DONE"""
-
-    """TAS v1 has one agent using tools."""
-    # TODO Agent actions are not working as they should hmm
-    def build_tas_v1(self):
-        """Build the Teaching Agent System version 1.
-
-        This version of the TAS is agenic, and has simple tools.
+        This version of the TAS is agenic and has tools.
         """
         tool_class = ToolClass()
         tools = [tool_class.build_search_tool(),
@@ -322,49 +215,6 @@ class TAS:
                                            handle_parsing_errors=True)
         return tas_agent_executor
 
-    """TODO TAS v2 has one agent using other agents which have access to tools."""
-    def build_tas_v2(self):
-        """Build the Teaching Agent System version 2.
-
-        This version of the TAS is agenic, and uses complex tools such as other agents.
-        """
-        agent_class = AgentClass(llm_model=self.llm_model, tool_class=ToolClass())
-        search_agent = agent_class.build_search_agent()
-        tools = [search_agent]
-
-        tas_agent = create_react_agent(llm=self.llm_model,
-                                       tools=tools,
-                                       prompt=self.tas_prompt,
-                                       output_parser=None)
-        tas_agent_executor = AgentExecutor(agent=tas_agent,
-                                           tools=tools,
-                                           memory=self.short_term_memory,
-                                           verbose=True,
-                                           handle_parsing_errors=True)
-        return tas_agent_executor
-
-    """TODO TAS v3 has one agent using multi-agent systems."""
-    def build_tas_v3(self):
-        """Build the Teaching Agent System version 3.
-
-        This version of the TAS is agenic, and uses very complex tools such as multi-agent systems.
-        """
-        multi_agent_class = MultiAgentClass(llm_model=self.llm_model)
-        coding_multi_agent = multi_agent_class.build_coding_multi_agent()
-        tools = [coding_multi_agent]
-
-        tas_agent = create_react_agent(llm=self.llm_model,
-                                       tools=tools,
-                                       prompt=self.tas_prompt,
-                                       output_parser=None)
-        tas_agent_executor = AgentExecutor(agent=tas_agent,
-                                           tools=tools,
-                                           memory=self.short_term_memory,
-                                           verbose=True,
-                                           handle_parsing_errors=True)
-        return tas_agent_executor
-
-
 
     """Predict function for invoking the initiated TAS."""
     def predict(self, query):
@@ -377,30 +227,6 @@ class TAS:
             self.long_term_memory_class.save_conversation_step(user_query=query, llm_response=response)
         return response
 
-
-
-    """(Likely not for use) Baseline Teaching Agent System (will maybe be redundant)."""
-    def build_nonagenic_baseline(self):
-        """Build the baseline Teaching Agent System."""
-        prompt = {
-            "chat_history": {},
-            "input": input,
-            "system_message": ".",
-        }
-        prompt_template = """You are a teaching assistant. You are responsible for answering questions and inqueries that the student might have.\n
-Here is the student's query, which you MUST respond to:
-{input}\n
-This is the conversation so far:
-{chat_history}"""
-        prompt = PromptTemplate.from_template(template=prompt_template)
-        #  prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
-        baseline_memory = self.init_memory()
-        baseline_chain = ConversationChain(llm=self.llm_model,
-                                prompt=prompt,
-                                memory=baseline_memory,
-                                #output_parser=BaseLLMOutputParser(),
-                                verbose=False,)
-        return baseline_chain
 
     """(DOES NOT WORK) Predict function for invoking the initiated TAS asynchronously for use in Chainlit frontend."""
     def cl_predict(self, query):
@@ -420,25 +246,22 @@ This is the conversation so far:
 
 if __name__ == '__main__':
 
-    # test_version = "baseline"
-    tas_version = "v1"
-    time_now = time.strftime("%Y.%m.%d-%H.%M.")
-    langsmith_name = tas_version + " TAS TEST " + time_now
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
+
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="TAS")
 
     tas = TAS(llm_model=llm_model,
-            version=tas_version,
+            baseline=False,
             course="IntroToMachineLearning",
             student_name="August",
-            student_id="AugustSemrau1"
+            student_id=None#"AugustSemrau1"
             )
 
-    res = tas.predict("Hello, I am August! Today, I would like to learn about the three most important supervised learning algorithms.")
+    res = tas.predict("Hello, I am August! I would like to learn about Linear Regression.")
     print("\n\nResponse: ", res)
     # res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
     # print("\n\nResponse: ", res)
-    # res = tas.predict("Thank you for the help, have a nice day!")
-    # print("\n\nResponse: ", res)
+    res = tas.predict("Thank you for the help, have a nice day!")
+    print("\n\nResponse: ", res)
 
 
 
