@@ -121,10 +121,12 @@ class TAS:
 
     def __init__(self,
                  llm_model,
-                 baseline = False,
-                 course: str = "Math1",
+                 baseline_bool = False,
                  student_id=None,
                  student_name: str = "August",
+                 course: str = "IntroToMachineLearning",
+                 subject: str = "Linear Regression",
+                 learning_prefs: str = "Prefers visual representations of the subject",
                  ):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
@@ -142,31 +144,37 @@ class TAS:
         if self.student_id is not None:
             self.long_term_memory_class = LongTermMemory(user_name=self.student_id)
 
-        self.tas_prompt = self.build_tas_prompt()
-        self.build_executor(ver=baseline)
+        self.tas_prompt = self.build_tas_prompt(student_name=student_name,
+                                                course_name=course,
+                                                subject_name=subject,
+                                                learning_preferences=learning_prefs,
+                                                ltm_query="")
+        self.build_executor(ver=baseline_bool)
 
     """Build the Teaching Agent System executor."""
     def build_executor(self, ver):
         """Build the Teaching Agent System executor."""
         if not ver:
-            self.tas_executor = self.build_tas_v1()
+            self.tas_executor = self.build_tas()
             self.output_tag = "output"
         else:
             self.tas_executor = self.build_nonagenic_baseline()
             self.output_tag = "response"
 
     """Prompt for the Teaching Agent System."""
-    def build_tas_prompt(self, ltm_query=""):
+    def build_tas_prompt(self, student_name, course_name, subject_name, learning_preferences, ltm_query=""):
         """Build the agent prompt."""
         # TODO Advanced memory types such as core_beliefs, formative_events, longterm_memory
-        facts = ""
+        facts = "Nothing"
         if self.student_id is not None:
             facts = self.long_term_memory_class.get_user_semantic_memories(query=ltm_query)
-        prompt_hub_template = hub.pull("augustsemrau/react-teaching-chat").template
+        prompt_hub_template = hub.pull("augustsemrau/react-tas-prompt").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-        prompt = prompt_template.partial(course_name=self.course,
-                                        student_name=self.student_name,
-                                        ltm_facts=facts,
+        prompt = prompt_template.partial(student_name=student_name,
+                                         course_name=course_name,
+                                         subject_name=subject_name,
+                                         learning_preferences=learning_preferences,
+                                         ltm_facts=facts,
                                         )
         return prompt
 
@@ -247,16 +255,23 @@ This is the conversation so far:
 if __name__ == '__main__':
 
 
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="TAS")
+    llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name="TAS")
 
+    student_name = "August"
+    student_course = "IntroToMachineLearning"
+    student_subject = "Linear Regression"
+    student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
+    student_query = f"Hello, I am {student_name}! I am studying the course {student_course} and am trying to learn about the subject {student_subject}. Please explain me this subject."
     tas = TAS(llm_model=llm_model,
-            baseline=False,
-            course="IntroToMachineLearning",
-            student_name="August",
+            baseline_bool=False,
+            course=student_course,
+            subject=student_subject,
+            learning_prefs=student_learning_preferences,
+            student_name=student_name,
             student_id=None#"AugustSemrau1"
             )
 
-    res = tas.predict("Hello, I am August! I would like to learn about Linear Regression.")
+    res = tas.predict(query=student_query)
     print("\n\nResponse: ", res)
     # res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
     # print("\n\nResponse: ", res)
