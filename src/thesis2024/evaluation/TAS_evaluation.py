@@ -40,7 +40,7 @@ class OtherEvaluationMetrics:
 
 
 class TasEvaluator:
-    """Class for evaluating the Teaching Agent System."""
+    """Class for evaluating the TAS."""
 
     def __init__(self, eval_model, experiment_name: str):
         """Initialize."""
@@ -57,9 +57,9 @@ class TasEvaluator:
                                          criteria_description=criteria_des)
         return prompt
 
-    """Parses the dataset to extract the chat history which is evaluated upon."""
+
     def output_dataset(self, inputs: dict) -> dict:
-        """Extract entire chat history from dataset."""
+        """Parse the dataset to extract the chat history which is evaluated upon."""
         chat_hist = inputs["chat_history"]
         # second_last_message = inputs["input"]
         # outputs = run.outputs["output"]
@@ -81,7 +81,7 @@ class TasEvaluator:
                 # "Politeness": self.politeness_output,
                 "Conversation": conversation}
 
-    """Run the evaluation."""
+
     def run_evaluation(self, dataset_name):
         """Run the evaluation experiment."""
         other_metrics = OtherEvaluationMetrics()
@@ -103,7 +103,7 @@ class TasEvaluator:
                 )
         return experiment_results
 
-    """Evaluate correctness."""
+
     def correctness(self, conversation):
         """Evaluate correctness."""
         criteria = "Correctness"
@@ -121,7 +121,7 @@ More correct should be given a higher score, and less correct should be given a 
         """Output correctness grade to Langsmith."""
         return {"key": "Correctness", "score": float(self.correctness_output['Grade'])}
 
-    """Evaluate relevance."""
+
     def relevance(self, conversation):
         """Evaluate relevance."""
         criteria = "Relevance"
@@ -140,7 +140,6 @@ More relevant should be given a higher score, and less relevant should be given 
         return {"key": "Relevance", "score": float(self.correctness_output['Grade'])}
 
 
-    """Evaluate clarity."""
     def clarity(self, conversation):
         """Evaluate clarity."""
         criteria = "Clarity"
@@ -158,7 +157,7 @@ Clearer communication should be given a higher score, and less clear communicati
         """Output correctness grade to Langsmith."""
         return {"key": "Clarity", "score": float(self.clarity_output['Grade'])}
 
-    """Evaluate adaptability."""
+
     def adaptability(self, conversation):
         """Evaluate adaptability."""
         criteria = "Adaptability"
@@ -176,7 +175,7 @@ Better adaptability should be given a higher score, and lack of adaptability sho
         """Output correctness grade to Langsmith."""
         return {"key": "Adaptability", "score": float(self.adaptability_output['Grade'])}
 
-    """Evaluate repeats."""
+
     def repeats(self, conversation):
         """Evaluate funnyness."""
         criteria = "Repeats"
@@ -217,11 +216,12 @@ Polite interactions should be given a higher score. Less polite interactions sho
 
 if __name__ == "__main__":
 
-    time_now = time.strftime("%Y.%m.%d-%H.%M.")
-    langsmith_name = "TAS Evaluation RQ1 " + time_now
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
+    langsmith_name =  "TAS Evaluation"
+    llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name=langsmith_name)
 
-    evaluator_class = TasEvaluator(eval_model=llm_model, experiment_name=langsmith_name)
+    time_now = time.strftime("%Y.%m.%d-%H.%M.")
+    experiment_name = langsmith_name + time_now
+    evaluator_class = TasEvaluator(eval_model=llm_model, experiment_name=experiment_name)
 
     dataset_name = "TAS_v1_GPT4_Dataset"
     experiment_results = evaluator_class.run_evaluation(dataset_name=dataset_name)
