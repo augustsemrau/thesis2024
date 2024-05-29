@@ -6,7 +6,6 @@ import time
 import chainlit as cl
 from thesis2024.utils import init_llm_langsmith
 from thesis2024.TAS import TAS
-from thesis2024.models.SSA import SSA
 
 
 """Chainlit testing of the TAS."""
