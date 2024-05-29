@@ -28,7 +28,7 @@ from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
 
 
-"""Tools for the Teaching Agent System (TAS) v1."""
+
 class ToolClass:
     """Class for the tools in the Teaching Agent System."""
 
@@ -36,15 +36,9 @@ class ToolClass:
         """Initialize the tool class."""
         pass
 
-    """Internet Search Tool using Tavily API."""
+
     def build_search_tool(self):
         """Build the search tool."""
-        # search_func = DuckDuckGoSearchAPIWrapper()
-        # search_tool = Tool(name="Current Search",
-        #                 func=search_func.run,
-        #                 description="Useful when you need to answer questions about current events or the current state of the world."
-        #                 )
-
         search_func = TavilySearchResults()
         search_tool = Tool(name="Web Search",
                         func=search_func.invoke,
@@ -52,7 +46,7 @@ class ToolClass:
                         )
         return search_tool
 
-    """Retrieval Tool using Chroma as vectorstore."""
+
     def build_retrieval_tool(self, course_name="Math1"):
         """Build the retrieval tool."""
         course_list = ["Mat1", "Math1", "DeepLearning", "IntroToMachineLearning"]
@@ -66,7 +60,7 @@ class ToolClass:
             if len(docs) == 0:
                 return "No relevant documents found in all local data."
             else:
-                # append the first 3 documents to the 
+                # append the first 3 documents to the tool return
                 return_docs = ""
                 for doc in docs:
                     return_docs += doc.page_content + "\n\n"
@@ -79,9 +73,9 @@ class ToolClass:
                             )
         return retrieval_tool
 
-    """Coding Tool using Python REPL."""
+
     def build_coding_tool(self):
-        """Build a coding tool."""
+        """Coding Tool using Python REPL."""
         repl = PythonREPL()
         def python_repl(
             code: Annotated[str, "The python code to execute to generate whatever fits the user needs."]
@@ -117,9 +111,9 @@ class ToolClass:
 
 
 
-"""Teaching Agent System (TAS) for the thesis2024 project."""
+
 class TAS:
-    """Class for the Teaching Agent System."""
+    """Teaching Agent System (TAS) for the thesis2024 project."""
 
     def __init__(self,
                  llm_model,
@@ -153,7 +147,6 @@ class TAS:
                                                 ltm_query="")
         self.build_executor(ver=baseline_bool)
 
-    """Build the Teaching Agent System executor."""
     def build_executor(self, ver):
         """Build the Teaching Agent System executor."""
         if not ver:
@@ -163,10 +156,8 @@ class TAS:
             self.tas_executor = self.build_nonagenic_baseline()
             self.output_tag = "response"
 
-    """Prompt for the Teaching Agent System."""
     def build_tas_prompt(self, student_name, course_name, subject_name, learning_preferences, ltm_query=""):
         """Build the agent prompt."""
-        # TODO Advanced memory types such as core_beliefs, formative_events, longterm_memory
         facts = "Nothing"
         if self.student_id is not None:
             facts = self.long_term_memory_class.get_user_semantic_memories(query=ltm_query)
@@ -178,9 +169,6 @@ class TAS:
                                          learning_preferences=learning_preferences,
                                          ltm_facts=facts,
                                         )
-        # prompt_hub_template = hub.pull("hwchase17/react").template
-        # prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-        # prompt = prompt_template.partial()
         return prompt
 
     def build_nonagenic_baseline(self):
@@ -196,7 +184,6 @@ Here is the student's query, which you MUST respond to:
 This is the conversation so far:
 {chat_history}"""
         prompt = PromptTemplate.from_template(template=prompt_template)
-        #  prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
         baseline_chain = ConversationChain(llm=self.llm_model,
                                 prompt=prompt,
                                 memory=self.short_term_memory,
@@ -205,10 +192,7 @@ This is the conversation so far:
         return baseline_chain
 
     def build_tas(self):
-        """Build the Teaching Agent System (TAS).
-
-        This version of the TAS is agenic and has tools.
-        """
+        """Build the Teaching Agent System (TAS)."""
         tool_class = ToolClass()
         tools = [tool_class.build_search_tool(),
                  tool_class.build_retrieval_tool(course_name=self.course),
@@ -219,23 +203,21 @@ This is the conversation so far:
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
                                        prompt=self.tas_prompt,
-                                       output_parser=None)#ReActOutputParser())#PydanticOutputParser())#None)#StrOutputParser())
+                                       output_parser=None)
         tas_agent_executor = AgentExecutor(agent=tas_agent,
                                            tools=tools,
                                            memory=self.short_term_memory,
                                            verbose=True,
-                                           handle_parsing_errors=True)#"Check your output and make sure it conforms, use the Action/Action Input syntax")#True)
+                                           handle_parsing_errors=True)
         return tas_agent_executor
 
 
-    """Predict function for invoking the initiated TAS."""
     def predict(self, query):
         """Invoke the Teaching Agent System."""
         print("\n\nUser Query:\n", query)
         response = self.tas_executor.invoke({"input": query})[self.output_tag]
         print("\n\nResponse:\n", response)
-        # print("\n\nTAS Memory:")
-        # print(f"\n{self.tas_executor.memory}\n")
+
         if self.student_id is not None:
             self.long_term_memory_class.save_conversation_step(user_query=query, llm_response=response)
         return response
