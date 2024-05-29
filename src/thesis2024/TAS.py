@@ -80,7 +80,6 @@ class ToolClass:
         return retrieval_tool
 
     """Coding Tool using Python REPL."""
-    # TODO Coding tool should work, but is not implemented as it is not currently sandboxed correctly.
     def build_coding_tool(self):
         """Build a coding tool."""
         repl = PythonREPL()
@@ -212,8 +211,8 @@ This is the conversation so far:
         """
         tool_class = ToolClass()
         tools = [tool_class.build_search_tool(),
-                #  tool_class.build_retrieval_tool(course_name=self.course),
-                #  tool_class.build_coding_tool(),
+                 tool_class.build_retrieval_tool(course_name=self.course),
+                 tool_class.build_coding_tool(),
                 #  tool_class.build_math_tool(),
                  ]
 
@@ -259,16 +258,18 @@ This is the conversation so far:
 
 if __name__ == '__main__':
 
-
-    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="TAS")
-
     student_name = "August"
     student_course = "IntroToMachineLearning"
     student_subject = "Linear Regression"
-    student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
-    # student_learning_preferences = "I prefer code examples in order to understand technical concepts"
+    # student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
+    student_learning_preferences = "I prefer code examples in order to understand technical concepts"
     # student_learning_preferences = "I prefer text-based explanations and metaphors in order to understand technical concepts"
+
     student_query = f"Hello, I am {student_name}!\nI am studying the course {student_course} and am trying to learn about the subject {student_subject}.\nMy learning preferences are described as the following: {student_learning_preferences}.\nPlease explain me this subject."
+
+
+    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="TAS")
+    # llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="BASELINE_CHAIN")
     tas = TAS(llm_model=llm_model,
             baseline_bool=False,
             course=student_course,
@@ -282,10 +283,10 @@ if __name__ == '__main__':
     print("\n\nResponse:\n", res)
     # res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
     # print("\n\nResponse: ", res)
-    res = tas.predict("I'm not sure I get it completely. Can you explain it in a different way?")
+    res = tas.predict(query="I'm not sure I understand the subject from this explanation. Can you explain it in a different way?")
     print("\n\nResponse:\n", res)
 
-    res = tas.predict("Thank you for the help, have a nice day!")
+    res = tas.predict(query="Thank you for the help, have a nice day!")
     print("\n\nResponse:\n", res)
 
 

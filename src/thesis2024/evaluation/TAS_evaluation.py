@@ -42,19 +42,20 @@ class OtherEvaluationMetrics:
 class TasEvaluator:
     """Class for evaluating the TAS."""
 
-    def __init__(self, eval_model, experiment_name: str):
+    def __init__(self, eval_model, experiment_name: str, few_shot_examples: str):
         """Initialize."""
         self.eval_model = eval_model
         self.experiment_name = experiment_name
+        self.few_shot_examples = few_shot_examples
 
 
-    """Prompt for the TAS Evaluator."""
     def build_eval_prompt(self, prompt_name: str, criteria: str, criteria_des: str):
-        """Build the agent prompt."""
+        """Prompt for the TAS Evaluator."""
         prompt_hub_template = hub.pull(prompt_name).template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
         prompt = prompt_template.partial(criteria_name=criteria,
-                                         criteria_description=criteria_des)
+                                         criteria_description=criteria_des,
+                                         few_shot_examples=self.few_shot_examples)
         return prompt
 
 
@@ -64,33 +65,36 @@ class TasEvaluator:
         # second_last_message = inputs["input"]
         # outputs = run.outputs["output"]
 
-        conversation = chat_hist #+ "\n" + second_last_message
+        conversation = str(chat_hist) #+ "\n" + second_last_message
 
+        self.personalization_output = self.personalization(conversation=conversation)
+        self.engagement_output = self.engagement(conversation=conversation)
+        self.repetition_output = self.repetition(conversation=conversation)
         self.correctness_output = self.correctness(conversation=conversation)
-        self.relevance_output = self.relevance(conversation=conversation)
-        self.clarity_output = self.clarity(conversation=conversation)
-        self.repeats_output = self.repeats(conversation=conversation)
-        self.adaptability_output = self.adaptability(conversation=conversation)
-        # self.politeness_output = self.politeness(conversation=conversation)
+        # self.relevance_output = self.relevance(conversation=conversation)
+        # self.clarity_output = self.clarity(conversation=conversation)
+        # self.adaptability_output = self.adaptability(conversation=conversation)
 
-        return {"Correctness": self.correctness_output,
-                "Relevance": self.relevance_output,
-                "Clarity": self.clarity_output,
-                "Repeats": self.repeats_output,
-                "Adaptability": self.adaptability_output,
-                # "Politeness": self.politeness_output,
+        return {"Personalization": self.personalization_output,
+                "Engagement": self.engagement_output,
+                "Repetition": self.repetition_output,
+                "Correctness": self.correctness_output,
+                # "Relevance": self.relevance_output,
+                # "Clarity": self.clarity_output,
+                # "Adaptability": self.adaptability_output,
                 "Conversation": conversation}
 
 
     def run_evaluation(self, dataset_name):
         """Run the evaluation experiment."""
         other_metrics = OtherEvaluationMetrics()
-        evalulators = [self.correctness_grade,
-                       self.relevance_grade,
-                       self.clarity_grade,
-                       self.repeats_grade,
-                       self.adaptability_grade,
-                    #    self.politeness_grade,
+        evalulators = [self.personalization,
+                       self.engagement,
+                       self.repetition,
+                       self.correctness_grade,
+                    #    self.relevance_grade,
+                    #    self.clarity_grade,
+                    #    self.adaptability_grade,
                        other_metrics.is_answered,
                        other_metrics.conversation_length]
         # Run
@@ -102,6 +106,62 @@ class TasEvaluator:
                 # metadata={"variant": "stuff website context into gpt-3.5-turbo",},
                 )
         return experiment_results
+
+
+    def personalization(self, conversation):
+        """Evaluate correctness."""
+        criteria = "Personalization"
+        criteria_des = """
+The student states their personal learning preferences, and the Teaching Assistant should adapt to these preferences. 
+Adapting it's explanations to these learning preferences is paramount. 
+How well does the Teaching Assistant personalize it's explanation of the given subject to the student? 
+Better personalization be given a higher score, and neglegting the student's learning preferences should be given a lower score.
+"""
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
+                                        criteria=criteria,
+                                        criteria_des=criteria_des)
+        chain = prompt | self.eval_model | JsonOutputParser()
+        return chain.invoke({"input": conversation})
+    def personalization_grade(self, run: Run, example: Example) -> dict:
+        """Output correctness grade to Langsmith."""
+        return {"key": "Personalization", "score": float(self.correctness_output['Grade'])}
+
+
+
+    def engagement(self, conversation):
+        """Evaluate correctness."""
+        criteria = "Engagement"
+        criteria_des = """
+
+"""
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
+                                        criteria=criteria,
+                                        criteria_des=criteria_des)
+        chain = prompt | self.eval_model | JsonOutputParser()
+        return chain.invoke({"input": conversation})
+    def engagement_grade(self, run: Run, example: Example) -> dict:
+        """Output correctness grade to Langsmith."""
+        return {"key": "Engagement", "score": float(self.correctness_output['Grade'])}
+
+
+
+    def repetition(self, conversation):
+        """Evaluate correctness."""
+        criteria = "Repetition"
+        criteria_des = """
+Repeating the same information multiple times can be necessary in order for the student to understand it, but should be conveyed in alternative ways by rephrasing and recontextualing.
+How well is the Teaching Assistant conveying the information without repeating itself?
+Avoiding the repeating of information should be given a higher score. If repeats are done, the ability to rephrase the same information in new ways should be given a higher score. Repeating information without altering it should be given a lower score.
+"""
+        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
+                                        criteria=criteria,
+                                        criteria_des=criteria_des)
+        chain = prompt | self.eval_model | JsonOutputParser()
+        return chain.invoke({"input": conversation})
+    def repetition_grade(self, run: Run, example: Example) -> dict:
+        """Output correctness grade to Langsmith."""
+        return {"key": "Repetition", "score": float(self.correctness_output['Grade'])}
+
 
 
     def correctness(self, conversation):
@@ -176,54 +236,40 @@ Better adaptability should be given a higher score, and lack of adaptability sho
         return {"key": "Adaptability", "score": float(self.adaptability_output['Grade'])}
 
 
-    def repeats(self, conversation):
-        """Evaluate funnyness."""
-        criteria = "Repeats"
-        criteria_des = """
-Repeating the same information multiple times can be necessary in order for the student to understand it, but should be conveyed in alternative ways by rephrasing and recontextualing.
-How well is the Teaching Assistant conveying the information without repeating itself?
-Avoiding the repeating of information should be given a higher score. If repeats are done, the ability to rephrase the same information in new ways should be given a higher score. Repeating information without altering it should be given a lower score.
-"""
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
-                                        criteria=criteria,
-                                        criteria_des=criteria_des)
-        chain = prompt | self.eval_model | JsonOutputParser()
-        return chain.invoke({"input": conversation})
-    def repeats_grade(self, run: Run, example: Example) -> dict:
-        """Output correctness grade to Langsmith."""
-        return {"key": "Repeats", "score": float(self.repeats_output['Grade'])}
 
-    """NOT USED: Evaluate politeness."""
-    def politeness(self, conversation):
-        """Evaluate politeness."""
-        criteria = "Politeness"
-        criteria_des = """
-Politeness and proper communication is key to leaving a good impression in the user.
-How politely is the Teaching Assistant communicating?
-Polite interactions should be given a higher score. Less polite interactions should be given a lower score.
-"""
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
-                                        criteria=criteria,
-                                        criteria_des=criteria_des)
-        chain = prompt | self.eval_model | JsonOutputParser()
-        return chain.invoke({"input": conversation})
-    def politeness_grade(self, run: Run, example: Example) -> dict:
-        """Output correctness grade to Langsmith."""
-        return {"key": "Politeness", "score": float(self.politeness_output['Grade'])}
+
 
 
 
 
 if __name__ == "__main__":
 
+    examples = """CONVERSATION 1:\nStudent: Hello, I am August!\nI am studying the course IntroToMachineLearning and am trying to learn about the subject Linear Regression.\nMy learning preferences are described as the following: I prefer code examples in order to understand technical concepts.\nPlease explain me this subject.\nTeaching Assistant: Linear regression is a statistical method used to model the relationship between a dependent variable and one or more independent variables by fitting a linear equation to observed data. The simplest form of the regression equation with one dependent and one independent variable is defined by the formula $y = \\beta_0 + \\beta_1x$, where:\n- $y$ is the dependent variable,\n- $x$ is the independent variable,\n- $\\beta_0$ is the intercept,\n- $\\beta_1$ is the slope of the line.\n\nThis equation allows you to predict the value of $y$ based on the value of $x$. In machine learning, linear regression can be used for predicting outcomes and trends based on historical data.\n\nHere's a Python code example using scikit-learn to perform linear regression:\n\n```python\nimport numpy as np\nfrom sklearn.linear_model import LinearRegression\nimport matplotlib.pyplot as plt\n\n# Sample data\n# Independent variable\nX = np.array([[1], [2], [3], [4], [5]])\n# Dependent variable\ny = np.array([2, 4, 5, 4, 5])\n\n# Create a linear regression model\nmodel = LinearRegression()\n\n# Fit the model\nmodel.fit(X, y)\n\n# Predict values\npredicted = model.predict(X)\n\n# Plotting the results\nplt.scatter(X, y, color='red', label='Actual data')\nplt.plot(X, predicted, color='blue', label='Fitted line')\nplt.title('Linear Regression Example')\nplt.xlabel('Independent variable (X)')\nplt.ylabel('Dependent variable (y)')\nplt.legend()\nplt.show()\n```\n\nIn this example:\n- We create sample data for $X$ (independent variable) and $y$ (dependent variable).\n- We instantiate the `LinearRegression` model and fit it to our data.\n- We then use the model to predict $y$ values based on $X$.\n- Finally, we plot both the actual data points and the fitted line to visualize how well our model has performed.\n\nThis code will help you see how linear regression works in practice, from setting up the data and model to making predictions and visualizing the results.\nStudent: I'm not sure I understand the subject from this explanation. Can you explain it in a different way?\nTeaching Assistant: Let's explore linear regression with a new dataset to enhance your understanding. In this example, we generate a set of 100 random data points for the independent variable $X$, ranging from 0 to 10. We then define the dependent variable $y$ using the equation $y = 3X + \\epsilon + 5$, where $\\epsilon$ is random noise. This helps simulate real-world data where measurements are not perfect.\n\nWe fit a linear regression model to this data, aiming to find the best line that approximates the relationship between $X$ and $y$. The model's predictions are then plotted alongside the actual data points. The green dots represent the actual data, while the black line shows the fitted model's predictions.\n\nThis visual representation helps you see how the linear regression model attempts to draw a line that minimizes the distance between itself and all the data points, effectively capturing the trend in the data. This example should give you a clearer idea of how linear regression works and how it can be applied to different datasets to predict outcomes based on historical data.
+\n\n
+FEEDBACK FOR CONVERSATION 1:\n
+Personalization criteria Score: 1.0\n
+Engagement criteria Score: 0.25\n
+Repetition criteria Score: 0.75\n
+Correctness criteria Score: 1.0\n\n
+
+CONVERSATION 2:\n
+\n\n
+FEEDBACK FOR CONVERSATION 2:\n
+Personalization criteria Score: 1.0\n
+Engagement criteria Score: 0.25\n
+Repetition criteria Score: 0.75\n
+Correctness criteria Score: 1.0\n\n
+"""
+
     langsmith_name =  "TAS Evaluation"
-    llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name=langsmith_name)
+    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name=langsmith_name)
 
     time_now = time.strftime("%Y.%m.%d-%H.%M.")
     experiment_name = langsmith_name + time_now
-    evaluator_class = TasEvaluator(eval_model=llm_model, experiment_name=experiment_name)
+    evaluator_class = TasEvaluator(eval_model=llm_model, experiment_name=experiment_name, few_shot_examples=examples)
 
-    dataset_name = "TAS_v1_GPT4_Dataset"
+    # dataset_name = "TAS_v1_GPT4_Dataset"
+    dataset_name = "BASELINE_GPT-35"
     experiment_results = evaluator_class.run_evaluation(dataset_name=dataset_name)
 
 
