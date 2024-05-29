@@ -22,7 +22,7 @@ from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 
 # Local imports
 from thesis2024.utils import init_llm_langsmith
-from thesis2024.memory import LongTermMemory
+from thesis2024.PMAS import LongTermMemory
 from thesis2024.multiagent_modules.coding_agent import CodingMultiAgent
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
