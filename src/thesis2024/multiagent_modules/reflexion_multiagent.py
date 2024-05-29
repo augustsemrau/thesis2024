@@ -85,13 +85,13 @@ tavily_tool = TavilySearchResults(api_wrapper=search, max_results=5)
 
 
 
-class Reflexion:
+class ReflexionMultiAgent:
     """Class defining the reflexion agent framework."""
 
-    def __init__(self, llm_model):
+    def __init__(self, llm_model, max_iter=5):
         """Initialize the reflexion framework."""
         self.llm_model = llm_model
-        self.graph = self.build_graph(max_iterations=5)
+        self.graph = self.build_graph(max_iterations=max_iter)
 
     def create_actor_prompt_template(self):
         actor_prompt_template = ChatPromptTemplate.from_messages(
@@ -123,6 +123,7 @@ class Reflexion:
             first_instruction="Provide a detailed ~250 word answer.",
             function_name=AnswerQuestion.__name__,
         ) | self.llm_model.bind_tools(tools=[AnswerQuestion])
+
         validator = PydanticToolsParser(tools=[AnswerQuestion])
 
         first_responder = ResponderWithRetries(
@@ -165,6 +166,7 @@ class Reflexion:
         return tool_node
 
     def build_graph(self, max_iterations: int = 5):
+        """Build the reflexion graph."""
         first_responder = self.create_first_responder()
         revisor = self.create_revisor()
         tool_node = self.create_tool_node()
@@ -181,8 +183,6 @@ class Reflexion:
         builder.add_edge("execute_tools", "revise")
 
         # Define looping logic:
-
-
         def _get_num_iterations(state: list):
             i = 0
             for m in state[::-1]:
@@ -190,7 +190,6 @@ class Reflexion:
                     break
                 i += 1
             return i
-
 
         def event_loop(state: list) -> Literal["execute_tools", "__end__"]:
             # in our case, we'll just stop after N plans
@@ -208,33 +207,44 @@ class Reflexion:
 
     def predict(self, query: str):
         """Generate a response to a user query using Reflexion."""
-        # events = self.graph.stream(
-        #     [HumanMessage(content=query)],
-        #     stream_mode="values",
-        # )
-        events = self.graph.stream(
-            [HumanMessage(content=query)],
-            stream_mode="values",
-        )
-        return events
+        outputs = []
+        for output in self.graph.stream([HumanMessage(content=query)],
+                                   stream_mode="updates",
+                                   ):
+            for key, value in output.items():
+                outputs.append(value)
+                print(f"Output from node '{key}':")
+                print("---")
+                print(value)
+            print("\n---\n")
+            # if "__end__" not in s:
+            #     print(s)
+            #     print("---")
+            #     output.append(s)
+            # else:
+            #     print("End of stream.")
+        # output = self.graph.invoke([HumanMessage(content=query)],
+        #                            stream_mode="values",
+        #                            )
+        return outputs#["answer"]#[-1].content
 
 
 
 
 if __name__ == "__main__":
     # Test the Reflexion class
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="Reflexion Test")
 
-    # Initialize the LLM model5
-    time_now = time.strftime("%Y.%m.%d-%H.%M.")
-    langsmith_name = "Reflexion Test " + time_now
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
-
-    reflexion_class = Reflexion(llm_model=llm_model)
+    reflexion_class = ReflexionMultiAgent(llm_model=llm_model, max_iter=1)
 
     user_query = "Please write a section for my thesis about LLM agents, ReAct and agent-related prompt engineering.The section should be written in acedemic language, and can include math and code."
     response = reflexion_class.predict(query=user_query)
     print(response)
-    for i, step in enumerate(response):
-        print(f"Step {i}")
-        step[-1].pretty_print()
+    # for i, step in enumerate(response):
+    #     print(f"Step {i}")
+    #     step[-1].pretty_print()
+    # tool_calls = response['AIMessage']['additional_kwargs']['tool_calls']
+    # last_tool_call = tool_calls[-1]  # Get the last tool call
+    # last_answer = last_tool_call['args']['answer']  # Access the answer from the args of the last tool call
+    # print(last_answer)
 
