@@ -1,6 +1,5 @@
 """Teaching Agent System (TAS) for the thesis2024 project."""
 
-import time
 
 # Langchain imports
 from langchain import hub
@@ -22,9 +21,11 @@ from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 # Local imports
 from thesis2024.utils import init_llm_langsmith
 from thesis2024.PMAS import LongTermMemory
-from thesis2024.multiagent_modules.coding_agent import CodingMultiAgent
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
+from thesis2024.multiagent_modules.coding_agent import CodingMultiAgent
+from thesis2024.multiagent_modules.reflexion_multiagent import ReflexionMultiAgent
+from thesis2024.multiagent_modules.hierarchical_multiagent import HierarchicalMultiAgent
 
 
 """Tools for the Teaching Agent System (TAS) v1."""
@@ -117,64 +118,6 @@ class ToolClass:
 
 
 
-"""Agents for the Teaching Agent System (TAS) v2."""
-class AgentClass:
-    """Class for the agents used in the Teaching Agent System."""
-
-    def __init__(self,
-                 llm_model,
-                 tool_class):
-        """Initialize the agent class."""
-        self.llm_model = llm_model
-        self.tool_class = tool_class
-
-    """Prompt for the Agent Tools."""
-    def build_tool_agent_prompt(self):
-        """Build the agent prompt."""
-        prompt_hub_template = hub.pull("augustsemrau/react-agent-tool").template
-        prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-        prompt = prompt_template.partial()
-        return prompt
-
-
-    def build_search_agent(self):
-        """Build the search agent."""
-        tool_class = ToolClass()
-        tools = [tool_class.build_search_tool()]
-
-        tas_agent = create_react_agent(llm=self.llm_model,
-                                       tools=tools,
-                                       prompt=self.build_tool_agent_prompt(),
-                                       output_parser=None)
-        # tas_v1_memory = self.init_memory()
-        tas_agent_executor = AgentExecutor(agent=tas_agent,
-                                           tools=tools,
-                                        #    memory=tas_v1_memory,
-                                           verbose=True,
-                                           handle_parsing_errors=True)
-        def search_agent_function(query: str):
-            """Search tool function."""
-            output = tas_agent_executor.invoke({"input": query})["output"]
-            return output
-        search_agent = StructuredTool.from_function(
-                                        name="Search Agent",
-                                        func=search_agent_function,
-                                        description="Useful when you need to answer questions about current events or the current state of the world."
-                                        )
-        return search_agent
-
-
-
-    def build_retrieval_agent(self):
-        """Build the retrieval agent."""
-        retrieval_tool = self.tool_class.build_retrieval_tool()
-        retrieval_agent = StructuredTool.from_function(
-                            name="Retrieval Agent",
-                            func=retrieval_tool.invoke,
-                            description="Useful when you need to answer questions using relevant course material."
-                            )
-        return retrieval_agent
-
 """Multi-Agent systems for the Teaching Agent System (TAS) v3."""
 class MultiAgentClass:
     """Class for the multi-agent systems used in the Teaching Agent System."""
@@ -253,10 +196,12 @@ class TMAS:
     def build_executor(self, ver):
         """Build the Teaching Agent System executor."""
         if ver:
-            self.tas_executor = self.build_reflexion_tmas()
+            reflexion_class = ReflexionMultiAgent()
+            self.tmas_executor = self.build_reflexion_tmas()
             self.output_tag = "output"
         else:
-            self.tas_executor = self.build_hierarchical_tmas()
+            hierarchical_class = HierarchicalMultiAgent()
+            self.tmas_executor = self.build_hierarchical_tmas()
             self.output_tag = "response"
 
     """Prompt for the Teaching Agent System."""
@@ -276,26 +221,7 @@ class TMAS:
                                         )
         return prompt
 
-    def build_hierarchical_tmas(self):
-        """Baseline LLM Chain Teaching System."""
-        prompt = {
-            "chat_history": {},
-            "input": input,
-            "system_message": ".",
-        }
-        prompt_template = """You are a teaching assistant. You are responsible for answering questions and inquiries that the student might have.
-Here is the student's query, which you MUST respond to:
-{input}
-This is the conversation so far:
-{chat_history}"""
-        prompt = PromptTemplate.from_template(template=prompt_template)
-        #  prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
-        baseline_chain = ConversationChain(llm=self.llm_model,
-                                prompt=prompt,
-                                memory=self.short_term_memory,
-                                #output_parser=BaseLLMOutputParser(),
-                                verbose=False,)
-        return baseline_chain
+
 
     def build_reflexion_tmas(self):
         """Build the Teaching Agent System (TAS).
@@ -321,13 +247,11 @@ This is the conversation so far:
         return tas_agent_executor
 
 
-    """Predict function for invoking the initiated TAS."""
     def predict(self, query):
-        """Invoke the Teaching Agent System."""
+        """Invoke the Teaching Multi-Agent System."""
         print("\n\nUser Query:", query)
-        response = self.tas_executor.invoke({"input": query})[self.output_tag]
-        # print("\n\nTAS Memory:")
-        # print(f"\n{self.tas_executor.memory}\n")
+        response = self.tmas_executor.invoke({"input": query})[self.output_tag]
+        print("\n\nResponse:\n", res)
         if self.student_id is not None:
             self.long_term_memory_class.save_conversation_step(user_query=query, llm_response=response)
         return response
@@ -357,7 +281,8 @@ if __name__ == '__main__':
         llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="REFLEXION TMAS")
     else:
         llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="HIERARCHICAL TMAS")
-    tas = TMAS(llm_model=llm_model,
+
+    tmas = TMAS(llm_model=llm_model,
             reflexion_bool=reflexion,
             course=student_course,
             subject=student_subject,
@@ -366,12 +291,8 @@ if __name__ == '__main__':
             student_id=None#"AugustSemrau1"
             )
 
-    res = tas.predict(query=student_query)
-    print("\n\nResponse:\n", res)
-    # res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
-    # print("\n\nResponse: ", res)
-    res = tas.predict(query="I'm not sure I understand the subject from this explanation. Can you explain it in a different way?")
-    print("\n\nResponse:\n", res)
+    res = tmas.predict(query=student_query)
 
-    res = tas.predict(query="Thank you for the help, have a nice day!")
-    print("\n\nResponse:\n", res)
+    res = tmas.predict(query="I'm not sure I understand the subject from this explanation. Can you explain it in a different way?")
+
+    res = tmas.predict(query="Thank you for the help, have a nice day!")

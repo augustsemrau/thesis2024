@@ -231,8 +231,9 @@ This is the conversation so far:
     """Predict function for invoking the initiated TAS."""
     def predict(self, query):
         """Invoke the Teaching Agent System."""
-        print("\n\nUser Query:", query)
+        print("\n\nUser Query:\n", query)
         response = self.tas_executor.invoke({"input": query})[self.output_tag]
+        print("\n\nResponse:\n", response)
         # print("\n\nTAS Memory:")
         # print(f"\n{self.tas_executor.memory}\n")
         if self.student_id is not None:
@@ -240,10 +241,9 @@ This is the conversation so far:
         return response
 
 
-    """(DOES NOT WORK) Predict function for invoking the initiated TAS asynchronously for use in Chainlit frontend."""
+    """TODO (DOES NOT WORK) Predict function for invoking the initiated TAS asynchronously for use in Chainlit frontend."""
     def cl_predict(self, query):
         """Invoke the Teaching Agent System."""
-
         res = self.tas_executor.invoke({"input": query}, callbacks=[cl.AsyncLangchainCallbackHandler()])
         return res[self.output_tag]
 
@@ -280,19 +280,9 @@ if __name__ == '__main__':
             )
 
     res = tas.predict(query=student_query)
-    print("\n\nResponse:\n", res)
-    # res = tas.predict("What is the name of the person who invented the ADAM optimization technique?")
-    # print("\n\nResponse: ", res)
+
     res = tas.predict(query="I'm not sure I understand the subject from this explanation. Can you explain it in a different way?")
-    print("\n\nResponse:\n", res)
 
     res = tas.predict(query="Thank you for the help, have a nice day!")
-    print("\n\nResponse:\n", res)
 
 
-
-
-    # Old test queries
-    # res = tas.predict("What is the current world record in 50 meter butterfly?")
-    # res = tas.predict("Can you explain me how ADAM optimization works?")
-    # print(tas.predict("Hej! Jeg vil gerne snakke dansk. Kan du forklare mig hvordan lineær regression virker?"))#["output"]
