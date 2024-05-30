@@ -105,7 +105,15 @@ class FormativeEvent(BaseModel):
     impact: str = Field(default="",
         description="How this event influenced the user."
         )
+class SubjectComprehension(BaseModel):
+    """Formative events for the user."""
 
+    subject: str = Field(default="",
+        description="The subject which the user discussed in this interaction/conversation.",
+        )
+    comprehension: str = Field(default="",
+        description="How well did the user comprehend this subject? Did they show clear comprehension, a lack of comprehension, or not show whether their comprehend the subject?"
+        )
 """Thread State"""
 class ConversationSummary(BaseModel):
     """Summary of a conversation."""
@@ -126,10 +134,12 @@ class LongTermMemory:
         self.client = Client()
         self.user_id, self.user_name, self.thread_id, self.past_thread_ids = get_user_uuid_and_create_thread_id(user=user_name)
         self.user_semantic_memory_function = self.get_user_semantic_memory_function()
+
         # Create memory functions
         self.user_state_function = self.client.create_memory_function(UserProfile, target_type="user_state")
         self.belief_function = self.client.create_memory_function(CoreBelief, target_type="user_append_state")
         self.event_function = self.client.create_memory_function(FormativeEvent, target_type="user_append_state")
+        self.subject_comprehension_function = self.client.create_memory_function(SubjectComprehension, target_type="user_append_state")
         self.thread_summary_function = self.client.create_memory_function(ConversationSummary, target_type="thread_summary")
 
     def get_user_semantic_memory_function(self):
@@ -157,12 +167,13 @@ class LongTermMemory:
             "content": llm_response,
             "role": "assistant",
         }]
-        self.client.add_messages(thread_id=self.thread_id, messages=conversation_step)
+        self.client.add_messages(thread_id=self.thread_id,
+                                 messages=conversation_step)
         # TODO Comment this out, not necessary for actual use
         self.client.trigger_all_for_thread(thread_id=self.thread_id)
 
     def get_user_semantic_memories(self, query: str):
-        """Retrieve long term memories for the relevant user."""
+        """Retrieve long term semantic memories for the relevant user."""
         memories = self.client.query_user_memory(
                         user_id=self.user_id,
                         text=query,
@@ -177,6 +188,7 @@ class LongTermMemory:
         facts = ".\n".join([mem["text"] for mem in sorted_memories])
         return facts
 
+
     def get_user_state(self, query: str):
         """Retrieve long term memories for the relevant user."""
         # user_state = None
@@ -188,7 +200,7 @@ class LongTermMemory:
         print(user_state)
         return user_state
 
-    def get_user_append_memories(self, query: str):
+    def get_user_append_memories(self, query: str = ""):
         """Retrieve long term memories for the relevant user."""
         memories = self.client.query_user_memory(
                         user_id=self.user_id,
@@ -205,14 +217,33 @@ class LongTermMemory:
         return facts
 
 
-    # TODO Test thread summary retrieval
+    def get_subject_comprehension_memories(self, query: str = ""):
+        """Retrieve long term memories for the relevant user."""
+        memories = self.client.query_user_memory(
+                        user_id=self.user_id,
+                        text=query,
+                        k=10,
+                        memory_function_ids=[self.subject_comprehension_function["id"]],
+                        )
+        print(memories)
+        if query == "":
+            sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["importance"], reverse=True)
+        else:
+            sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["relevance"], reverse=True)
+        facts = ".\n".join([mem["text"] for mem in sorted_memories])
+        return facts
+
+
     def get_thread_summaries(self):
         """Retrieve the summaries for all threads."""
         thread_summaries = {}
         for thread_id in self.past_thread_ids:
             try:
-                thread_summary = self.client.get_thread_memory(thread_id=thread_id, memory_function_id=self.thread_summary_function["id"])
+                thread_summary = self.client.get_thread_memory(thread_id=thread_id,
+                                                               memory_function_id=self.thread_summary_function["id"])
                 thread_summaries[thread_id] = thread_summary
+                print(f"Thread id {thread_id} has the following summary: {thread_summary}")
+
             except Exception:
                 print(f"No memories for thread id {thread_id}")
                 continue
