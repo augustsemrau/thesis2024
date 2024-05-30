@@ -3,27 +3,18 @@
 # Langchain imports
 from langchain import hub
 from langchain.agents import AgentExecutor, Tool, create_react_agent
-from langchain.output_parsers import PydanticOutputParser
 from langchain_core.output_parsers import StrOutputParser
-from langchain.agents.react.output_parser import ReActOutputParser
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
-from langchain_core.messages import HumanMessage
-from langchain.chains import ConversationChain
-import chainlit as cl
 
 # Tool imports
 from langchain.tools import StructuredTool
-from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from langchain_community.tools.tavily_search import TavilySearchResults
 from typing import Annotated
 from langchain_experimental.utilities import PythonREPL
-from langchain_community.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 
 # Local imports
 from thesis2024.utils import init_llm_langsmith
-from thesis2024.PMAS import LongTermMemory
-from thesis2024.multiagent_modules.coding_agent import CodingMultiAgent
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
 
@@ -111,73 +102,79 @@ class ReflexionTool:
         self.course = course_name
 
         tool_class = ToolClass()
-        self.tools = [tool_class.build_search_tool(),
-                    tool_class.build_retrieval_tool(course_name=self.course),
-                    tool_class.build_coding_tool(),
-                    ]
-        self.general_prompt = "You are working together with a several other agents in a teaching assistance system.\n\n"
+        self.search_tool = [tool_class.build_search_tool()]
+        self.retrieval_tool = [tool_class.build_retrieval_tool(course_name=self.course)]
+        self.coding_tool = [tool_class.build_coding_tool()]
 
+        self.general_prompt = "You are working together with several other agents in a teaching assistance system.\n\n"
 
+    def initial_draft(self, query: str, chat_history: str):
+        """First draft of the subgraph."""
+        prompt_template = "{system_message}\n\nYou are responsible for creating the first draft of the response to the student's query:\n\n{query}\n\nThis is the previous interactions between the teaching agent system and the student: {chat_history}\n\nBegin!"
+        prompt = PromptTemplate(input_variables=["query"], template=prompt_template)
+        prompt = prompt.partial(system_message=self.general_prompt,
+                                chat_history=chat_history)
+        llm_temp = self.llm_model
+        chain = prompt | llm_temp | StrOutputParser()
+        return chain.invoke(query)
 
-    def initial_draft(self, query: str):
-        """Initial draft of the subgraph."""
-        specific_prompt = f"""You are responsible for creating the first draft of the response to the student's query:\n\n{query}\n\nBegin!"""
-        prompt = self.general_prompt + specific_prompt
-
-        return self.llm_model.invoke(prompt)
-
-
-    def critique_draft(self, draft: str):
+    def critique_draft(self, query: str, draft: str):
         """Critique the draft."""
-        pass
-    def new_draft(self, critique: str):
+        prompt_template = "{system_message}\n\nYou are responsible for critiquing a draft of the response to the student's query:\n\n{query}\n\nThe draft you must critique is the following:\n{draft}\n\nBegin!"
+        prompt = PromptTemplate(input_variables=["draft"], template=prompt_template)
+        prompt = prompt.partial(system_message=self.general_prompt,
+                                query=query)
+        llm_temp = self.llm_model
+        chain = prompt | llm_temp | StrOutputParser()
+        return chain.invoke(draft)
+
+    def new_draft(self, old_draft: str, critique: str):
         """Create a new draft."""
-        pass
+        prompt_template = "{system_message}\n\nYou are responsible for generating an improved draft given some critique.\n\nThe original draft you must improve is the following:\n{old_draft}\n\nThis draft has been given the following critique:\n{critique}\n\nbased on this critique, improve the draft.\n\nBegin!"
+        prompt = PromptTemplate(input_variables=["critique"], template=prompt_template)
+        prompt = prompt.partial(system_message=self.general_prompt,
+                                old_draft=old_draft)
+        llm_temp = self.llm_model
+        chain = prompt | llm_temp | StrOutputParser()
+        return chain.invoke(critique)
 
-    def finalize_draft(self, final_draft: str, final_critique: str):
-        """Finalize the draft."""
-        pass
-
-    def build_nonagenic_baseline(self):
-        """Baseline LLM Chain Teaching System."""
-        prompt = {
-            "chat_history": {},
-            "input": input,
-            "system_message": ".",
-        }
-        prompt_template = """You are a teaching assistant. You are responsible for answering questions and inquiries that the student might have.
-Here is the student's query, which you MUST respond to:
-{input}
-This is the conversation so far:
-{chat_history}"""
-        prompt = PromptTemplate.from_template(template=prompt_template)
-        #  prompt = prompt_template.partial(system_message=system_message, course_name=course, subject_name=subject)
-        baseline_chain = ConversationChain(llm=self.llm_model,
-                                prompt=prompt,
-                                memory=self.short_term_memory,
-                                #output_parser=BaseLLMOutputParser(),
-                                verbose=False,)
-        return baseline_chain
 
     def build_reflexion_tool(self):
         """Build the subgraph tool."""
 
-        def invoke_reflexion_graph(self, query: str):
+        def reflexiontool(query: str, chat_history: str = ""):
             """Invoke the Reflexion Subgraph."""
-            initial_draft = self.initial_draft(query)
-            critique = self.critique_draft(draft=initial_draft)
+            draft = self.initial_draft(query, chat_history)
+            print(f"Initial draft:\n{draft}\n\n")
             for i in range(self.max_iter):
-                new_draft = self.new_draft(critique=critique)
-                critique = self.critique_draft(draft=new_draft)
-            response = self.finalize_draft(final_draft=new_draft, final_critique=critique)
+                critique = self.critique_draft(query=query, draft=draft)
+                # print(f"Critique:\n{critique}\n\n")
+                draft = self.new_draft(old_draft=draft, critique=critique)
+                # print(f"\n\nIteration {i}:\n{draft}\n\n")
+            response = draft
             return response
 
         reflexion_tool = StructuredTool.from_function(
                             name="Reflexion Tool",
-                            func=invoke_reflexion_graph,
-                            description="Useful when you need to answer questions."
+                            func=reflexiontool,
+                            description="Useful when you need to answer questions.",
+                            return_direct=True
                             )
         return reflexion_tool
+
+    def build_finishconversation_tool(self):
+        """Build the finish conversation tool."""
+        def finishconversation(query: str):
+            return "Thank you for the help, have a nice day!"
+
+        end_finishconversation_tool = StructuredTool.from_function(
+                            name="Finish Conversation Tool",
+                            func=finishconversation,
+                            description="Useful when you need to end a conversation.",
+                            return_direct=True
+                            )
+        return end_finishconversation_tool
+
 
 
 
@@ -188,56 +185,47 @@ class ReflexionMultiAgent:
 
     def __init__(self,
                  llm_model,
+                 reflexion_model,
+                 max_iter: int = 3,
                  course: str = "IntroToMachineLearning",
                  ):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
-        self.course = course
-
-        # Init short term memory for the TAS
+        self.reflexion_model = reflexion_model
         self.short_term_memory = ConversationBufferMemory(memory_key="chat_history",
                                                           return_messages=False,
                                                           ai_prefix="Teaching Assistant",
                                                           human_prefix="Student")
+        self.reflexion_class = ReflexionTool(llm_model=self.reflexion_model,
+                                             max_iterations=max_iter,
+                                             course_name=course)
+        self.reflexion_executor = self.build_executor()
 
-        self.reflexion_prompt = self.build_reflexion_prompt()
-        self.reflexion_executor = self.build_reflexion_agent()
 
-
-
-    def build_reflexion_prompt(self):
-        """Build the Reflexion Multi-Agent Prompt."""
+    def build_executor(self):
+        """Build the Reflexion Multi-Agent System."""
+        reflexion_tool = [self.reflexion_class.build_reflexion_tool(),
+                          self.reflexion_class.build_finishconversation_tool()]
         prompt_hub_template = hub.pull("augustsemrau/reflexion-agent-prompt").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
         prompt = prompt_template.partial()
-        return prompt
-
-
-
-    def build_reflexion_agent(self):
-        """Build the Reflexion Multi-Agent System."""
-        tool_class = ReflexionTool(course_name=self.course)
-        tools = [tool_class.build_reflexion_toolh()]
         tas_agent = create_react_agent(llm=self.llm_model,
-                                       tools=tools,
-                                       prompt=self.reflexion_prompt,
+                                       tools=reflexion_tool,
+                                       prompt=prompt,
                                        output_parser=None)
-        tas_agent_executor = AgentExecutor(agent=tas_agent,
-                                           tools=tools,
+        executor = AgentExecutor(agent=tas_agent,
+                                           tools=reflexion_tool,
                                            memory=self.short_term_memory,
-                                           verbose=True,
+                                           verbose=False,
                                            handle_parsing_errors=True)
-        return tas_agent_executor
-
-
+        return executor
 
     def predict(self, query):
         """Invoke the Reflexion Multi-Agent System."""
         print("\n\nUser Query:\n", query)
-        response = self.reflexion_executor.invoke({"input": query})[self.output_tag]
+        response = self.reflexion_executor.invoke({"input": query})["output"]
         print("\n\nResponse:\n", response)
-        # print("\n\nTAS Memory:")
-        # print(f"\n{self.tas_executor.memory}\n")
+        # print(f"\n\nTAS Memory:\n{self.tas_executor.memory}\n")
         return response
 
 
@@ -248,25 +236,21 @@ if __name__ == "__main__":
     student_course = "IntroToMachineLearning"
     student_subject = "Linear Regression"
     # student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
-    student_learning_preferences = "I prefer code examples in order to understand technical concepts"
-    # student_learning_preferences = "I prefer text-based explanations and metaphors in order to understand technical concepts"
+    # student_learning_preferences = "I prefer code examples in order to understand technical concepts"
+    student_learning_preferences = "I prefer text-based explanations and metaphors in order to understand technical concepts"
 
     student_query = f"Hello, I am {student_name}!\nI am studying the course {student_course} and am trying to learn about the subject {student_subject}.\nMy learning preferences are described as the following: {student_learning_preferences}.\nPlease explain me this subject."
 
 
-    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="REFLEXION TEST")
+    reflexion_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="REFLEXION TEST")
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="REFLEXION TEST")
     # llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="BASELINE_CHAIN")
     reflexion = ReflexionMultiAgent(llm_model=llm_model,
-                                    baseline_bool=False,
+                                    reflexion_model=reflexion_model,
+                                    max_iter=1,
                                     course=student_course,
-                                    subject=student_subject,
-                                    learning_prefs=student_learning_preferences,
-                                    student_name=student_name,
-                                    student_id=None#"AugustSemrau1"
                                     )
 
     res = reflexion.predict(query=student_query)
-
     res = reflexion.predict(query="I'm not sure I understand the subject from this explanation. Can you explain it in a different way?")
-
     res = reflexion.predict(query="Thank you for the help, have a nice day!")
