@@ -6,7 +6,7 @@ import os
 ## Local imports
 from thesis2024.utils import init_llm_langsmith
 from thesis2024.TAS import TAS
-from thesis2024.evaluation.SSA import SSA
+from thesis2024.redundant.SSA import SSA
 
 
 
