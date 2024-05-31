@@ -2,23 +2,12 @@
 # Imports for api keys
 import getpass
 import os
-import uuid
-
-# Imports for retriever
-# from langchain.text_splitter import RecursiveCharacterTextSplitter
-# from langchain_community.document_loaders import WebBaseLoader
-# from langchain_community.vectorstores import Chroma
-# from langchain_openai import OpenAIEmbeddings
 
 # Imports for state
 from typing import Dict, TypedDict
 from langchain_core.messages import BaseMessage
 
 # Imports for CRAG class
-import json
-import operator
-from typing import Annotated, Sequence, TypedDict
-
 from langchain import hub
 from langchain.output_parsers.openai_tools import PydanticToolsParser
 from langchain.prompts import PromptTemplate
@@ -39,6 +28,8 @@ from langgraph.graph import END, StateGraph
 # Imports for running this file
 from thesis2024.datamodules.load_vectorstore import load_peristent_chroma_store
 
+# Local Imports
+from thesis2024.utils import init_llm_langsmith
 
 
 class GraphState(TypedDict):
@@ -51,9 +42,6 @@ class GraphState(TypedDict):
     """
 
     keys: Dict[str, any]
-
-
-
 
 class Crag():
     """Represents the nodes and edges which make up a CRAG graph.
@@ -69,6 +57,7 @@ class Crag():
     """
 
     def __init__(self,
+                course_name: str="IntroToMachineLearning",
                 generate_model: str="gpt-3.5-turbo",
                 grade_model: str="gpt-4-0125-preview",
                 transform_query_model: str="gpt-4-0125-preview",
@@ -90,10 +79,11 @@ class Crag():
 
         # Load vectorstore
         # vectorstore = load_peristent_chroma_store(openai_embedding=True)
-        self.retriever = load_peristent_chroma_store(openai_embedding=True,
-                                                    vectorstore_path=vectorstore_dir).as_retriever()
+        course_list = ["Mat1", "Math1", "DeepLearning", "IntroToMachineLearning"]
+        if course_name not in course_list:
+            raise ValueError(f"Course name not recognized. Should be one of {course_list}.")
+        self.retriever = load_peristent_chroma_store(openai_embedding=True, vectorstore_path=f"data/vectorstores/{course_name}").as_retriever()
         self.app = self.build_rag_graph()
-        return None
 
 
     def retrieve(self, state):
@@ -113,7 +103,6 @@ class Crag():
         question = state_dict["question"]
         documents = self.retriever.get_relevant_documents(question)
         return {"keys": {"documents": documents, "question": question}}
-
 
     def generate(self, state):
         """Node Function: Generate answer.
@@ -150,7 +139,6 @@ class Crag():
         return {
             "keys": {"documents": documents, "question": question, "generation": generation}
         }
-
 
     def grade_documents(self, state):
         """Node Function: Determine whether the retrieved documents are relevant to the question.
@@ -225,7 +213,6 @@ class Crag():
             }
         }
 
-
     def transform_query(self, state):
         """Node Function: Transform the query to produce a better question.
 
@@ -264,7 +251,6 @@ class Crag():
 
         return {"keys": {"documents": documents, "question": better_question}}
 
-
     def web_search(self, state):
         """Node Function: Web search based on the re-phrased question using Tavily API.
 
@@ -289,8 +275,6 @@ class Crag():
         documents.append(web_results)
 
         return {"keys": {"documents": documents, "question": question}}
-
-
 
     def decide_to_generate(self, state):
         """Edge Function: Determine whether to generate an answer or re-generate a question for web search.
@@ -320,8 +304,6 @@ class Crag():
             print("---DECISION: GENERATE---")
             return "generate"
 
-
-    ### Function for building graph
     def build_rag_graph(self):
         """Build the graph for the CRAG model."""
         workflow = StateGraph(GraphState)
@@ -352,7 +334,6 @@ class Crag():
         app = workflow.compile()
         return app
 
-
     def predict(self, question: str):
         """Predict the answer to a question.
 
@@ -367,6 +348,7 @@ class Crag():
             The generated answer to the question.
 
         """
+        outputs = []
         inputs = {"keys": {"question": question}}
         for output in self.app.stream(inputs):
             for key, value in output.items():
@@ -375,9 +357,10 @@ class Crag():
                 # Optional: print full state at each node
                 # pprint.pprint(value["keys"], indent=2, width=80, depth=None)
                 pprint.pprint("\n---\n")
+                outputs.append(value["keys"])
                 if key == "generate":
-                    return value["keys"]["generation"]
-        return None
+                    final_output = value["keys"]["generation"]
+        return outputs, final_output
 
 
 
@@ -398,8 +381,6 @@ class RetrievalAgent:
         self.crag_class = crag_class
         self.retrieval_agent_model = retrieval_agent_model
         pass
-
-
 
     def retrieval_agent(self, state):
         """Node Function: Invokes the agent model to generate a response based on the current state.
@@ -425,7 +406,6 @@ class RetrievalAgent:
         response = model.invoke(messages)
         # We return a list, because this will get added to the existing list
         return {"keys": {"messages": [response]}}
-
 
     def should_retrieve(self, state):
         """Edge Function: Decide whether to retrieve documents.
@@ -458,6 +438,7 @@ class RetrievalAgent:
 
 
         ### Function for building graph
+
     def build_retrieval_rag_graph(self):
         """Build the graph for the CRAG model."""
         workflow = StateGraph(GraphState)
@@ -509,26 +490,18 @@ class RetrievalAgent:
 
 if __name__ == "__main__":
 
-    # Set environment variables
-    def _set_if_undefined(var: str):
-        if not os.environ.get(var):
-            os.environ[var] = getpass(f"Please provide your {var}")
-    _set_if_undefined("OPENAI_API_KEY")
-    _set_if_undefined("LANGCHAIN_API_KEY")
-    _set_if_undefined("TAVILY_API_KEY")
-    # Add tracing in LangSmith.
-    os.environ["LANGCHAIN_TRACING_V2"] = "true"
-    os.environ["LANGCHAIN_PROJECT"] = "Langgraph CRAG GPT-4"
+    _ = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="CRAG TEST")
 
 
 
-    CragClass = Crag()
-    # Build graph
-    # app = CragClass.build_rag_graph()
+    CragClass = Crag(course_name="IntroToMachineLearning",
+                generate_model="gpt-3.5-turbo",
+                grade_model="gpt-4-0125-preview",
+                transform_query_model="gpt-4-0125-preview",
+                vectorstore_dir="data/processed/chroma")
 
 
-    question = "Who is the teacher of the machine learning course, and how come the highest mountains are located in asia?"
-    question = "A sample of sulfur forms crystals when it (A) melts. (B) freezes. (C) evaporates. (D) condenses. The answer should be given as the corresponding letter of the correct answer."
-    answer = CragClass.predict(question=question)
+    question = "Who is the teacher of the course, and what are the three main topics?"
+    outputs, answer = CragClass.predict(question=question)
     # Final generation
     pprint.pprint(answer)
