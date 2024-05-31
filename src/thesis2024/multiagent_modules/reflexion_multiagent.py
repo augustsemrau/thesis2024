@@ -41,16 +41,20 @@ class ReflexionMultiAgent:
         self.max_iter = max_iter
         self.course = course
 
-        tool_class = ToolClass()
-        self.search_tool = [tool_class.build_search_tool()]
-        self.retrieval_tool = [tool_class.build_retrieval_tool(course_name=self.course)]
-        self.coding_tool = [tool_class.build_coding_tool()]
+        # Tools
+        self.tool_class = ToolClass()
+        self.search_tool = [self.tool_class.build_search_tool()]
+        self.retrieval_tool = [self.tool_class.build_retrieval_tool(course_name=self.course)]
+        self.crag_tool = [self.tool_class.build_crag_tool()]
+        self.coding_tool = [self.tool_class.build_coding_tool()]
 
         self.general_prompt = "You are working together with several other agents in a teaching assistance system.\n\n"
 
+
+
     def initial_draft(self, query: str, chat_history: str):
         """First draft of the subgraph."""
-        prompt_template = "{system_message}\n\nYou are responsible for creating the first draft of the response to the student's query:\n\n{query}\n\nThis is the previous interactions between the teaching agent system and the student: {chat_history}\n\nBegin!"
+        prompt_template = "{system_message}\n\nYou are responsible for creating the first draft of the response to the student's query:\n{query}\n\nThis is the previous interactions between the teaching agent system and the student: {chat_history}\n\nBegin!"
         prompt = PromptTemplate(input_variables=["query"], template=prompt_template)
         prompt = prompt.partial(system_message=self.general_prompt,
                                 chat_history=chat_history)
@@ -58,8 +62,33 @@ class ReflexionMultiAgent:
         chain = prompt | llm_temp | StrOutputParser()
         return chain.invoke(query)
 
-    def retrieve_information(self, query: str):
-        pass
+    def new_draft(self, old_draft: str, critique: str, retrieved_info: str):
+        """Create a new draft."""
+        prompt_template = "{system_message}\n\nYou are responsible for generating an improved draft given some critique.\n\nThe original draft you must improve is the following:\n{old_draft}\n\nThis draft has been given the following critique:\n{critique}\n\nbased on this critique, improve the draft.\n\nHere is some external information which may help with improving the draft:\n{retrieved_info}\n\nBegin!"
+        prompt = PromptTemplate(input_variables=["critique"], template=prompt_template)
+        prompt = prompt.partial(system_message=self.general_prompt,
+                                old_draft=old_draft,
+                                retrieved_info=retrieved_info)
+        llm_temp = self.llm_model
+        chain = prompt | llm_temp | StrOutputParser()
+        return chain.invoke(critique)
+
+    def crag(self, query: str, draft: str, critique: str):
+        """Build the crag retrieval agent."""
+        prompt_hub_template = hub.pull("augustsemrau/crag-agent-prompt").template
+        prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
+        prompt = prompt_template.partial(draft=draft,
+                                          critique=critique)
+        tas_agent = create_react_agent(llm=self.llm_model,
+                                       tools=self.crag_tool,
+                                       prompt=prompt)
+        executor = AgentExecutor(agent=tas_agent,
+                                           tools=self.crag_tool,
+                                           verbose=True,
+                                           handle_parsing_errors=True)
+        retrieved_info = executor.invoke({"input": query})["output"]
+        # self.tool_class.run_crag_function(search_query=query, course=self.course)
+        return retrieved_info
 
     def critique_draft(self, query: str, draft: str):
         """Critique the draft."""
@@ -71,15 +100,7 @@ class ReflexionMultiAgent:
         chain = prompt | llm_temp | StrOutputParser()
         return chain.invoke(draft)
 
-    def new_draft(self, old_draft: str, critique: str):
-        """Create a new draft."""
-        prompt_template = "{system_message}\n\nYou are responsible for generating an improved draft given some critique.\n\nThe original draft you must improve is the following:\n{old_draft}\n\nThis draft has been given the following critique:\n{critique}\n\nbased on this critique, improve the draft.\n\nBegin!"
-        prompt = PromptTemplate(input_variables=["critique"], template=prompt_template)
-        prompt = prompt.partial(system_message=self.general_prompt,
-                                old_draft=old_draft)
-        llm_temp = self.llm_model
-        chain = prompt | llm_temp | StrOutputParser()
-        return chain.invoke(critique)
+
 
 
     def build_reflexion_tool(self):
@@ -91,9 +112,11 @@ class ReflexionMultiAgent:
             print(f"Initial draft:\n{draft}\n\n")
             for i in range(self.max_iter):
                 critique = self.critique_draft(query=query, draft=draft)
-                # print(f"Critique:\n{critique}\n\n")
-                draft = self.new_draft(old_draft=draft, critique=critique)
-                # print(f"\n\nIteration {i}:\n{draft}\n\n")
+                print(f"Critique:\n{critique}\n\n")
+                retrieved_info = self.crag(query=query, draft=draft, critique=critique)
+                print(f"Retrieved information:\n{retrieved_info}\n\n")
+                draft = self.new_draft(old_draft=draft, critique=critique, retrieved_info=retrieved_info)
+                print(f"\n\nIteration {i}:\n{draft}\n\n")
             response = draft
             return response
 
@@ -167,7 +190,7 @@ if __name__ == "__main__":
     # llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="BASELINE_CHAIN")
     reflexion = ReflexionMultiAgent(llm_model=llm_model,
                                     reflexion_model=reflexion_model,
-                                    max_iter=5,
+                                    max_iter=2,
                                     course=student_course,
                                     )
 

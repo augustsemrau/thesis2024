@@ -69,17 +69,19 @@ class ToolClass:
                 transform_query_model="gpt-4-0125-preview",
                 vectorstore_dir="data/processed/chroma")
 
-        def crag_tool(query: str):
-
-            _, answer = crag_class.predict(question=query)
+        def crag_tool(search_query: str):
+            """Call the CRAG model to answer questions."""
+            _, answer = crag_class.predict(question=search_query)
             return str(answer)
 
         crag_tool = StructuredTool.from_function(
                             name="CRAG Tool",
                             func=crag_tool,
-                            description="Useful when you need to answer questions using relevant course material."
+                            description="Useful when you need to answer questions using relevant course material.",
+                            return_direct=True
                             )
         return crag_tool
+
 
 
     def build_coding_tool(self):
