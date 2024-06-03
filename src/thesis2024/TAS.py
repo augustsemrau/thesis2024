@@ -152,14 +152,13 @@ if __name__ == '__main__':
     student_name = "August"
     student_course = "IntroToMachineLearning"
     student_subject = "Linear Regression"
-    # student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
-    student_learning_preferences = "I prefer code examples in order to understand technical concepts"
+    student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
+    # student_learning_preferences = "I prefer code examples in order to understand technical concepts"
     # student_learning_preferences = "I prefer text-based explanations and metaphors in order to understand technical concepts"
 
     student_query = f"Hello, I am {student_name}!\nI am studying the course {student_course} and am trying to learn about the subject {student_subject}.\nMy learning preferences are described as the following: {student_learning_preferences}.\nPlease explain me this subject."
 
-
-    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="TAS")
+    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="TAS Few-Shot-Examples")
     # llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="BASELINE_CHAIN")
     tas = TAS(llm_model=llm_model,
             baseline_bool=False,
