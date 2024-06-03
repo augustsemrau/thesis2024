@@ -10,7 +10,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
 # Langsmith imports
-from langsmith.evaluation import evaluate, EvaluationResult, EvaluationResults
+from langsmith.evaluation import evaluate
 from langsmith.schemas import Run, Example
 
 # Local imports
@@ -68,17 +68,18 @@ class TasEvaluator:
         conversation = str(chat_hist) #+ "\n" + second_last_message
 
         self.personalization_output = self.personalization(conversation=conversation)
-        self.engagement_output = self.engagement(conversation=conversation)
-        self.repetition_output = self.repetition(conversation=conversation)
-        self.correctness_output = self.correctness(conversation=conversation)
+        # self.engagement_output = self.engagement(conversation=conversation)
+        # self.repetition_output = self.repetition(conversation=conversation)
+        # self.correctness_output = self.correctness(conversation=conversation)
         # self.relevance_output = self.relevance(conversation=conversation)
         # self.clarity_output = self.clarity(conversation=conversation)
         # self.adaptability_output = self.adaptability(conversation=conversation)
 
-        return {"Personalization": self.personalization_output,
-                "Engagement": self.engagement_output,
-                "Repetition": self.repetition_output,
-                "Correctness": self.correctness_output,
+        return {
+                "Personalization": self.personalization_output,
+                # "Engagement": self.engagement_output,
+                # "Repetition": self.repetition_output,
+                # "Correctness": self.correctness_output,
                 # "Relevance": self.relevance_output,
                 # "Clarity": self.clarity_output,
                 # "Adaptability": self.adaptability_output,
@@ -88,15 +89,16 @@ class TasEvaluator:
     def run_evaluation(self, dataset_name):
         """Run the evaluation experiment."""
         other_metrics = OtherEvaluationMetrics()
-        evalulators = [self.personalization,
-                       self.engagement,
-                       self.repetition,
-                       self.correctness_grade,
+        evalulators = [other_metrics.is_answered,
+                       other_metrics.conversation_length,
+                       self.personalization_grade,
+                    #    self.engagement_grade,
+                    #    self.repetition_grade,
+                    #    self.correctness_grade,
                     #    self.relevance_grade,
                     #    self.clarity_grade,
                     #    self.adaptability_grade,
-                       other_metrics.is_answered,
-                       other_metrics.conversation_length]
+                       ]
         # Run
         experiment_results = evaluate(self.output_dataset,
                 data=dataset_name,
@@ -112,8 +114,7 @@ class TasEvaluator:
         """Evaluate correctness."""
         criteria = "Personalization"
         criteria_des = """
-The student states their personal learning preferences, and the Teaching Assistant should adapt to these preferences. 
-Adapting it's explanations to these learning preferences is paramount. 
+The student states their personal learning preferences, and the Teaching Assistant should adapt to these preferences. Adapting it's explanations to these learning preferences is paramount. 
 How well does the Teaching Assistant personalize it's explanation of the given subject to the student? 
 Better personalization be given a higher score, and neglegting the student's learning preferences should be given a lower score.
 """
@@ -124,7 +125,7 @@ Better personalization be given a higher score, and neglegting the student's lea
         return chain.invoke({"input": conversation})
     def personalization_grade(self, run: Run, example: Example) -> dict:
         """Output correctness grade to Langsmith."""
-        return {"key": "Personalization", "score": float(self.correctness_output['Grade'])}
+        return {"key": "Personalization", "score": float(self.personalization_output['Grade'])}
 
 
 
@@ -132,7 +133,9 @@ Better personalization be given a higher score, and neglegting the student's lea
         """Evaluate correctness."""
         criteria = "Engagement"
         criteria_des = """
-
+The teaching assistant should engage the student in the conversation, making it interesting and interactive. Asking questions, providing examples, and encouraging participation are all ways to increase engagement.
+How engaging is the Teaching Assistant in the conversation?
+More engaging should be given a higher score, and less engaging should be given a lower score.
 """
         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
                                         criteria=criteria,
@@ -141,7 +144,7 @@ Better personalization be given a higher score, and neglegting the student's lea
         return chain.invoke({"input": conversation})
     def engagement_grade(self, run: Run, example: Example) -> dict:
         """Output correctness grade to Langsmith."""
-        return {"key": "Engagement", "score": float(self.correctness_output['Grade'])}
+        return {"key": "Engagement", "score": float(self.engagement_output['Grade'])}
 
 
 
@@ -159,8 +162,8 @@ Avoiding the repeating of information should be given a higher score. If repeats
         chain = prompt | self.eval_model | JsonOutputParser()
         return chain.invoke({"input": conversation})
     def repetition_grade(self, run: Run, example: Example) -> dict:
-        """Output correctness grade to Langsmith."""
-        return {"key": "Repetition", "score": float(self.correctness_output['Grade'])}
+        """Output repetition grade to Langsmith."""
+        return {"key": "Repetition", "score": float(self.repetition_output['Grade'])}
 
 
 
@@ -244,7 +247,13 @@ Better adaptability should be given a higher score, and lack of adaptability sho
 
 if __name__ == "__main__":
 
-    examples = """CONVERSATION 1:\nStudent: Hello, I am August!\nI am studying the course IntroToMachineLearning and am trying to learn about the subject Linear Regression.\nMy learning preferences are described as the following: I prefer code examples in order to understand technical concepts.\nPlease explain me this subject.\nTeaching Assistant: Linear regression is a statistical method used to model the relationship between a dependent variable and one or more independent variables by fitting a linear equation to observed data. The simplest form of the regression equation with one dependent and one independent variable is defined by the formula $y = \\beta_0 + \\beta_1x$, where:\n- $y$ is the dependent variable,\n- $x$ is the independent variable,\n- $\\beta_0$ is the intercept,\n- $\\beta_1$ is the slope of the line.\n\nThis equation allows you to predict the value of $y$ based on the value of $x$. In machine learning, linear regression can be used for predicting outcomes and trends based on historical data.\n\nHere's a Python code example using scikit-learn to perform linear regression:\n\n```python\nimport numpy as np\nfrom sklearn.linear_model import LinearRegression\nimport matplotlib.pyplot as plt\n\n# Sample data\n# Independent variable\nX = np.array([[1], [2], [3], [4], [5]])\n# Dependent variable\ny = np.array([2, 4, 5, 4, 5])\n\n# Create a linear regression model\nmodel = LinearRegression()\n\n# Fit the model\nmodel.fit(X, y)\n\n# Predict values\npredicted = model.predict(X)\n\n# Plotting the results\nplt.scatter(X, y, color='red', label='Actual data')\nplt.plot(X, predicted, color='blue', label='Fitted line')\nplt.title('Linear Regression Example')\nplt.xlabel('Independent variable (X)')\nplt.ylabel('Dependent variable (y)')\nplt.legend()\nplt.show()\n```\n\nIn this example:\n- We create sample data for $X$ (independent variable) and $y$ (dependent variable).\n- We instantiate the `LinearRegression` model and fit it to our data.\n- We then use the model to predict $y$ values based on $X$.\n- Finally, we plot both the actual data points and the fitted line to visualize how well our model has performed.\n\nThis code will help you see how linear regression works in practice, from setting up the data and model to making predictions and visualizing the results.\nStudent: I'm not sure I understand the subject from this explanation. Can you explain it in a different way?\nTeaching Assistant: Let's explore linear regression with a new dataset to enhance your understanding. In this example, we generate a set of 100 random data points for the independent variable $X$, ranging from 0 to 10. We then define the dependent variable $y$ using the equation $y = 3X + \\epsilon + 5$, where $\\epsilon$ is random noise. This helps simulate real-world data where measurements are not perfect.\n\nWe fit a linear regression model to this data, aiming to find the best line that approximates the relationship between $X$ and $y$. The model's predictions are then plotted alongside the actual data points. The green dots represent the actual data, while the black line shows the fitted model's predictions.\n\nThis visual representation helps you see how the linear regression model attempts to draw a line that minimizes the distance between itself and all the data points, effectively capturing the trend in the data. This example should give you a clearer idea of how linear regression works and how it can be applied to different datasets to predict outcomes based on historical data.
+    examples = "No examples"
+    """
+CONVERSATION 1:
+\nStudent: Hello, I am August!\nI am studying the course IntroToMachineLearning and am trying to learn about the subject Linear Regression.\nMy learning preferences are described as the following: I prefer code examples in order to understand technical concepts.\nPlease explain me this subject.
+\nTeaching Assistant: Linear regression is a statistical method used to model the relationship between a dependent variable and one or more independent variables by fitting a linear equation to observed data. The simplest form of the regression equation with one dependent and one independent variable is defined by the formula $y = \\beta_0 + \\beta_1x$, where:\n- $y$ is the dependent variable,\n- $x$ is the independent variable,\n- $\\beta_0$ is the intercept,\n- $\\beta_1$ is the slope of the line.\n\nThis equation allows you to predict the value of $y$ based on the value of $x$. In machine learning, linear regression can be used for predicting outcomes and trends based on historical data.\n\nHere's a Python code example using scikit-learn to perform linear regression:\n\n```python\nimport numpy as np\nfrom sklearn.linear_model import LinearRegression\nimport matplotlib.pyplot as plt\n\n# Sample data\n# Independent variable\nX = np.array([[1], [2], [3], [4], [5]])\n# Dependent variable\ny = np.array([2, 4, 5, 4, 5])\n\n# Create a linear regression model\nmodel = LinearRegression()\n\n# Fit the model\nmodel.fit(X, y)\n\n# Predict values\npredicted = model.predict(X)\n\n# Plotting the results\nplt.scatter(X, y, color='red', label='Actual data')\nplt.plot(X, predicted, color='blue', label='Fitted line')\nplt.title('Linear Regression Example')\nplt.xlabel('Independent variable (X)')\nplt.ylabel('Dependent variable (y)')\nplt.legend()\nplt.show()\n```\n\nIn this example:\n- We create sample data for $X$ (independent variable) and $y$ (dependent variable).\n- We instantiate the `LinearRegression` model and fit it to our data.\n- We then use the model to predict $y$ values based on $X$.\n- Finally, we plot both the actual data points and the fitted line to visualize how well our model has performed.\n\nThis code will help you see how linear regression works in practice, from setting up the data and model to making predictions and visualizing the results.
+\nStudent: I'm not sure I understand the subject from this explanation. Can you explain it in a different way?
+\nTeaching Assistant: Let's explore linear regression with a new dataset to enhance your understanding. In this example, we generate a set of 100 random data points for the independent variable $X$, ranging from 0 to 10. We then define the dependent variable $y$ using the equation $y = 3X + \\epsilon + 5$, where $\\epsilon$ is random noise. This helps simulate real-world data where measurements are not perfect.\n\nWe fit a linear regression model to this data, aiming to find the best line that approximates the relationship between $X$ and $y$. The model's predictions are then plotted alongside the actual data points. The green dots represent the actual data, while the black line shows the fitted model's predictions.\n\nThis visual representation helps you see how the linear regression model attempts to draw a line that minimizes the distance between itself and all the data points, effectively capturing the trend in the data. This example should give you a clearer idea of how linear regression works and how it can be applied to different datasets to predict outcomes based on historical data.
 \n\n
 FEEDBACK FOR CONVERSATION 1:\n
 Personalization criteria Score: 1.0\n
@@ -252,24 +261,31 @@ Engagement criteria Score: 0.25\n
 Repetition criteria Score: 0.75\n
 Correctness criteria Score: 1.0\n\n
 
-CONVERSATION 2:\n
+CONVERSATION:
+\nStudent: Hello! I am trying to learn about non-linear regression today. Can you explain this topic?
+\nTeaching Assistant: Hello! Nonlinear regression is a valuable method used in regression analysis when data cannot be accurately represented by a straight line. In this type of regression, the relationship between variables is modeled by a function that is a nonlinear combination of model parameters and depends on independent variables.\n\nTo put it simply, nonlinear regression involves finding the best-fitting curve or function that represents the relationship between variables through successive approximations. This method is particularly useful when the relationship between variables is not linear and a straight line would not accurately capture the data.\n\nFor example, in the field of economics, nonlinear regression can be used to model the relationship between income and spending habits, as people may not spend in a linear manner as their income increases.\n\nIt is important to note that non-linear regression can be more complex and computationally intensive compared to linear regression. This complexity arises from the need to estimate parameters for the nonlinear function, which can require advanced mathematical techniques and computational power.\n\nI hope this explanation, along with the example provided, helps you grasp the basics of non-linear regression. Feel free to reach out if you have any further questions or need clarification.
+\nStudent: Okay, can you give some formulas that relate to non-linear formulas in economics?
+\nTeaching Assitant: Hello! Nonlinear regression is a valuable method used in regression analysis when data cannot be accurately represented by a straight line. In this type of regression, the relationship between variables is modeled by a function that is a nonlinear combination of model parameters and depends on independent variables.\n\nTo put it simply, nonlinear regression involves finding the best-fitting curve or function that represents the relationship between variables through successive approximations. This method is particularly useful when the relationship between variables is not linear and a straight line would not accurately capture the data.\n\nIn economics, non-linear formulas play a crucial role in modeling relationships between variables. For example, polynomial functions like y=w0+w1x+w2x2+w3x3 and trigonometric functions like y=w0+w1cos(x) +w2sin(4x) are commonly used to capture non-linear features in the data. These formulas help economists understand complex relationships that cannot be explained by linear models.\n\nNonlinear regression can be more complex and computationally intensive compared to linear regression. It involves estimating parameters for the nonlinear function using advanced mathematical techniques and computational power. Despite its complexity, nonlinear regression is a powerful tool in analyzing economic data and uncovering non-linear relationships between variables.\n\nI hope this explanation, along with the examples provided, helps you grasp the basics of non-linear regression in economics. If you have any further questions or need clarification, please feel free to reach out.\n\nAdditionally, for further exploration of non-linear regression and non-linear formulas in economics, I recommend checking out resources such as textbooks, online courses, or academic papers. These additional resources can deepen your understanding of the topic and enhance your knowledge in this area.
+\n\nFEEDBACK FOR CONVERSATION 2:
+\nPersonalization criteria Score: 0.25
+\nEngagement criteria Score: 0.25
+\nRepetition criteria Score: 0.75
+\nCorrectness criteria Score: 0.5
 \n\n
-FEEDBACK FOR CONVERSATION 2:\n
-Personalization criteria Score: 1.0\n
-Engagement criteria Score: 0.25\n
-Repetition criteria Score: 0.75\n
-Correctness criteria Score: 1.0\n\n
 """
 
     langsmith_name =  "TAS Evaluation"
-    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name=langsmith_name)
+    dataset_name = "TAS-GPT4_Repetition"
+    langsmith_name = langsmith_name + " " + dataset_name
+    llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name=langsmith_name)
 
     time_now = time.strftime("%Y.%m.%d-%H.%M.")
     experiment_name = langsmith_name + time_now
-    evaluator_class = TasEvaluator(eval_model=llm_model, experiment_name=experiment_name, few_shot_examples=examples)
+    evaluator_class = TasEvaluator(eval_model=llm_model,
+                                   experiment_name=experiment_name,
+                                   few_shot_examples=examples)
 
     # dataset_name = "TAS_v1_GPT4_Dataset"
-    dataset_name = "BASELINE_GPT-35"
     experiment_results = evaluator_class.run_evaluation(dataset_name=dataset_name)
 
 
