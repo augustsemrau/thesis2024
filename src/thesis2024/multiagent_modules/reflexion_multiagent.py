@@ -52,33 +52,31 @@ class ReflexionMultiAgent:
 
 
 
-    def initial_draft(self, query: str, chat_history: str):
+    def initial_draft(self, query: str, retrieved_info: str):
         """First draft of the subgraph."""
-        prompt_template = "{system_message}\n\nYou are responsible for creating the first draft of the response to the student's query:\n{query}\n\nThis is the previous interactions between the teaching agent system and the student: {chat_history}\n\nBegin!"
+        prompt_template = "{system_message}\n\nYou are responsible for creating the first draft of the response to the student's query:\n{query}\n\nHere is some external information which may help with improving the draft:\n{retrieved_info}\n\nBegin!"
         prompt = PromptTemplate(input_variables=["query"], template=prompt_template)
         prompt = prompt.partial(system_message=self.general_prompt,
-                                chat_history=chat_history)
+                                retrieved_info=retrieved_info)
         llm_temp = self.llm_model
         chain = prompt | llm_temp | StrOutputParser()
         return chain.invoke(query)
 
-    def new_draft(self, old_draft: str, critique: str, retrieved_info: str):
+    def new_draft(self, old_draft: str, critique: str):
         """Create a new draft."""
-        prompt_template = "{system_message}\n\nYou are responsible for generating an improved draft given some critique.\n\nThe original draft you must improve is the following:\n{old_draft}\n\nThis draft has been given the following critique:\n{critique}\n\nbased on this critique, improve the draft.\n\nHere is some external information which may help with improving the draft:\n{retrieved_info}\n\nBegin!"
+        prompt_template = "{system_message}\n\nYou are responsible for generating an improved draft given some critique.\n\nThe original draft you must improve is the following:\n{old_draft}\n\nThis draft has been given the following critique:\n{critique}\n\nbased on this critique, improve the draft.\n\nBegin!"
         prompt = PromptTemplate(input_variables=["critique"], template=prompt_template)
         prompt = prompt.partial(system_message=self.general_prompt,
-                                old_draft=old_draft,
-                                retrieved_info=retrieved_info)
+                                old_draft=old_draft)
         llm_temp = self.llm_model
         chain = prompt | llm_temp | StrOutputParser()
         return chain.invoke(critique)
 
-    def crag(self, query: str, draft: str, critique: str):
+    def crag(self, query: str):#, chat_history: str):#draft: str="", critique: str=""):
         """Build the crag retrieval agent."""
-        prompt_hub_template = hub.pull("augustsemrau/crag-agent-prompt").template
+        prompt_hub_template = hub.pull("augustsemrau/crag-agent-prompt-2").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-        prompt = prompt_template.partial(draft=draft,
-                                          critique=critique)
+        prompt = prompt_template.partial()#chat_history=chat_history)#draft=draft, critique=critique)
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=self.crag_tool,
                                        prompt=prompt)
@@ -102,20 +100,19 @@ class ReflexionMultiAgent:
 
 
 
-
     def build_reflexion_tool(self):
         """Build the subgraph tool."""
 
-        def reflexiontool(query: str, chat_history: str = ""):
+        def reflexiontool(query: str):
             """Invoke the Reflexion Subgraph."""
-            draft = self.initial_draft(query, chat_history)
+            retrieved_info = self.crag(query=query)
+            print(f"Retrieved information:\n{retrieved_info}\n\n")
+            draft = self.initial_draft(query=query, retrieved_info=retrieved_info)
             print(f"Initial draft:\n{draft}\n\n")
             for i in range(self.max_iter):
                 critique = self.critique_draft(query=query, draft=draft)
                 print(f"Critique:\n{critique}\n\n")
-                retrieved_info = self.crag(query=query, draft=draft, critique=critique)
-                print(f"Retrieved information:\n{retrieved_info}\n\n")
-                draft = self.new_draft(old_draft=draft, critique=critique, retrieved_info=retrieved_info)
+                draft = self.new_draft(old_draft=draft, critique=critique)
                 print(f"\n\nIteration {i}:\n{draft}\n\n")
             response = draft
             return response
