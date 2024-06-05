@@ -67,7 +67,7 @@ class TAS:
 
     def build_tas_prompt(self, student_name, course_name, subject_name, learning_preferences, ltm_query=""):
         """Build the agent prompt."""
-        facts = "Nothing"
+        facts = "No prior conversations for this student."
         if self.student_id is not None:
             facts = self.long_term_memory_class.get_user_semantic_memories(query=ltm_query)
         prompt_hub_template = hub.pull("augustsemrau/react-tas-prompt-2").template
