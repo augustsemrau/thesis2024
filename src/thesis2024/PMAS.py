@@ -118,10 +118,25 @@ class SubjectComprehension(BaseModel):
 class ConversationSummary(BaseModel):
     """Summary of a conversation."""
 
-    title: str = Field(description="Distinct for the conversation.")
+    title: str = Field(description="Concise 2-5 word title for conversation.")
     summary: str = Field(description="High level summary of the interactions.")
     topic: List[str] = Field(description="Tags for topics discussed in this conversation.")
 
+
+
+# TODO: EXAMPLE FROM LANGMEM DOCS
+# class LearningPreference(BaseModel):
+#    learning_preference: str = Field(description="The learning preference.")
+#    why: str = Field(description="Why the user prefers this way of teaching.")
+#    context: str = Field(description="The context and perhaps courses/subjects in which this learning prefernce is appropriate")
+#    source_comment: str = Field(description="The raw user utterance where you identified this preference.")
+
+# client = Client()
+# memory_function = client.create_memory_function(
+#    LearningPreference,
+#    target_type="user_append_state",
+#    custom_instructions="Extract as many preferences from the conversation as you are able."
+# )
 
 
 
@@ -189,7 +204,7 @@ class LongTermMemory:
         return facts
 
 
-    def get_user_state(self, query: str):
+    def get_user_state(self, query: str=""):
         """Retrieve long term memories for the relevant user."""
         # user_state = None
         # while not user_state:
@@ -258,7 +273,8 @@ class LongTermMemory:
 if __name__ == "__main__":
     langsmith_name = "LangMem TEST 1 "
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name=langsmith_name)
-
+    ltm_class = LongTermMemory(user_name="AugustSemrau2")
+    ltm_class.past_thread_ids
 
 
 
