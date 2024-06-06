@@ -10,7 +10,7 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
 # Langsmith imports
-from langsmith.evaluation import evaluate
+from langsmith.evaluation import evaluate, aevaluate, evaluate_existing
 from langsmith.schemas import Run, Example
 
 # Local imports
@@ -48,7 +48,6 @@ class TasEvaluator:
         self.experiment_name = experiment_name
         self.few_shot_examples = few_shot_examples
 
-
     def build_eval_prompt(self, prompt_name: str, criteria: str, criteria_des: str):
         """Prompt for the TAS Evaluator."""
         prompt_hub_template = hub.pull(prompt_name).template
@@ -58,12 +57,9 @@ class TasEvaluator:
                                          few_shot_examples=self.few_shot_examples)
         return prompt
 
-
     def output_dataset(self, inputs: dict) -> dict:
         """Parse the dataset to extract the chat history which is evaluated upon."""
         chat_hist = inputs["chat_history"]
-        # second_last_message = inputs["input"]
-        # outputs = run.outputs["output"]
 
         conversation = str(chat_hist) #+ "\n" + second_last_message
         self.eval_output = self.eval(conversation=conversation)
@@ -96,6 +92,7 @@ class TasEvaluator:
                 data=dataset_name,
                 evaluators=evalulators,
                 experiment_prefix=self.experiment_name,
+                # max_concurrency=1,
                 # Any experiment metadata can be specified here
                 # metadata={"variant": "stuff website context into gpt-3.5-turbo",},
                 )
@@ -124,11 +121,16 @@ Avoiding the repeating of information should be given a higher score. If repeats
                                         criteria_des=criteria_description)
         chain = prompt | self.eval_model | JsonOutputParser()
         return chain.invoke({"input": conversation})
+
     def eval_personalization_grade(self, run: Run, example: Example) -> dict:
-        """Output correctness grade to Langsmith."""
+        """Output personalization grade to Langsmith."""
+        print("\n\n")
+        print("EVALUATION OUTPUT:", self.eval_output)
+        print(float(self.eval_output['Personalization']['Personalization Grade']))
+        print("\n\n")
         return {"key": "Personalization", "score": float(self.eval_output['Personalization']['Personalization Grade'])}
     def eval_engagement_grade(self, run: Run, example: Example) -> dict:
-        """Output correctness grade to Langsmith."""
+        """Output engagement grade to Langsmith."""
         return {"key": "Engagement", "score": float(self.eval_output['Engagement']['Engagement Grade'])}
     def eval_repetition_grade(self, run: Run, example: Example) -> dict:
         """Output repetition grade to Langsmith."""
@@ -265,9 +267,12 @@ Repetition Score: 0.75\n
     Repetition Score: 0.\n
     """
     # examples = ""
-    langsmith_name =  "TAS Evaluation"
-    dataset_name = "TAS_GPT-4_EvaluationSet_1"# "TAS_GPT-3.5" #"TAS-GPT4_Repetition"
-    langsmith_name = langsmith_name + " " + dataset_name
+    langsmith_name =  "TAS_Eval_Dataset_"
+    # dataset_name = "TAS_GPT-4_EvaluationSet_1"
+    dataset_name = "TAS_GPT-3.5_EvaluationSet_1"
+    # dataset_name = "Eval_FewShotExamples"
+    # dataset_name = "BASELINE_GPT-4"
+    langsmith_name = langsmith_name + dataset_name
     llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name=langsmith_name)
 
     time_now = time.strftime("%Y.%m.%d-%H.%M.")
