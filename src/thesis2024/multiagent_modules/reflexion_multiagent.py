@@ -25,13 +25,11 @@ class ReflexionMultiAgent:
 
     def __init__(self,
                  llm_model,
-                 reflexion_model,
                  max_iter: int = 3,
                  course: str = "IntroToMachineLearning",
                  ):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
-        self.reflexion_model = reflexion_model
         self.short_term_memory = ConversationBufferMemory(memory_key="chat_history",
                                                           return_messages=False,
                                                           ai_prefix="Teaching Assistant",
@@ -186,7 +184,6 @@ if __name__ == "__main__":
     llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="REFLEXION TEST")
     # llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="BASELINE_CHAIN")
     reflexion = ReflexionMultiAgent(llm_model=llm_model,
-                                    reflexion_model=reflexion_model,
                                     max_iter=2,
                                     course=student_course,
                                     )
