@@ -2,41 +2,17 @@
 
 import time
 
-
 # Langchain imports
-from langchain import chat_models, prompts, smith, hub
-from langchain.schema import output_parser
+from langchain import hub
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
 # Langsmith imports
-from langsmith.evaluation import evaluate, aevaluate, evaluate_existing
+from langsmith.evaluation import evaluate
 from langsmith.schemas import Run, Example
 
 # Local imports
 from thesis2024.utils import init_llm_langsmith
-
-
-
-class OtherEvaluationMetrics:
-    """Class for other evaluation metrics."""
-
-    def __init__(self):
-        """Initialize."""
-        pass
-
-    def is_answered(self, run: Run, example: Example) -> dict:
-        """Check if the question is answered."""
-        conversation = run.outputs.get("Conversation")
-        if not conversation:
-            return {"key": "is_answered" , "score": 0}
-        else:
-            return {"key": "is_answered" , "score": 1}
-
-    def conversation_length(self, run: Run, example: Example) -> dict:
-        """Check the length of the conversation."""
-        conversation = run.outputs.get("Conversation")
-        return {"key": "conversation_length" , "score": len(conversation)}
 
 
 class TasEvaluator:
@@ -58,37 +34,26 @@ class TasEvaluator:
         return prompt
 
     def output_dataset(self, inputs: dict) -> dict:
-        """Parse the dataset to extract the chat history which is evaluated upon."""
+        """Redundant."""
         chat_hist = inputs["chat_history"]
-
-        conversation = str(chat_hist) #+ "\n" + second_last_message
-        self.eval_output = self.eval(conversation=conversation)
-        # self.personalization_output = self.personalization(conversation=conversation)
-        # self.engagement_output = self.engagement(conversation=conversation)
-        # self.repetition_output = self.repetition(conversation=conversation)
-
+        conversation = str(chat_hist)
         return {"All"
-                "Evaluation": self.eval_output,
-                # "Personalization": self.personalization_output,
-                # "Engagement": self.engagement_output,
-                # "Repetition": self.repetition_output,
                 "Conversation": conversation}
 
 
     def run_evaluation(self, dataset_name):
         """Run the evaluation experiment."""
-        other_metrics = OtherEvaluationMetrics()
-        evalulators = [other_metrics.is_answered,
-                       other_metrics.conversation_length,
-                       self.eval_personalization_grade,
-                       self.eval_engagement_grade,
-                       self.eval_repetition_grade,
+        # other_metrics = OtherEvaluationMetrics()
+        evalulators = [self.eval,
+                    #    other_metrics.is_answered,
+                    #    other_metrics.conversation_length,
                     #    self.personalization_grade,
                     #    self.engagement_grade,
                     #    self.repetition_grade,
                        ]
         # Run
-        experiment_results = evaluate(self.output_dataset,
+        experiment_results = evaluate(
+                self.output_dataset,
                 data=dataset_name,
                 evaluators=evalulators,
                 experiment_prefix=self.experiment_name,
@@ -99,7 +64,7 @@ class TasEvaluator:
         return experiment_results
 
 
-    def eval(self, conversation):
+    def eval(self, run: Run, example: Example) -> dict:
         """Evaluate correctness."""
         criteria = "- Personalization\n- Engagement\n- Repetition"
         criteria_description = """
@@ -120,80 +85,17 @@ Avoiding the repeating of information should be given a higher score. If repeats
                                         criteria=criteria,
                                         criteria_des=criteria_description)
         chain = prompt | self.eval_model | JsonOutputParser()
-        return chain.invoke({"input": conversation})
 
-    def eval_personalization_grade(self, run: Run, example: Example) -> dict:
-        """Output personalization grade to Langsmith."""
-        print("\n\n")
-        print("EVALUATION OUTPUT:", self.eval_output)
-        print(float(self.eval_output['Personalization']['Personalization Grade']))
-        print("\n\n")
-        return {"key": "Personalization", "score": float(self.eval_output['Personalization']['Personalization Grade'])}
-    def eval_engagement_grade(self, run: Run, example: Example) -> dict:
-        """Output engagement grade to Langsmith."""
-        return {"key": "Engagement", "score": float(self.eval_output['Engagement']['Engagement Grade'])}
-    def eval_repetition_grade(self, run: Run, example: Example) -> dict:
-        """Output repetition grade to Langsmith."""
-        return {"key": "Repetition", "score": float(self.eval_output['Repetition']['Repetition Grade'])}
-
-
-
-
-    def personalization(self, conversation):
-        """Evaluate correctness."""
-        criteria = "Personalization"
-        criteria_des = """
-The student states their personal learning preferences, and the Teaching Assistant should adapt to these preferences. Adapting it's explanations to these learning preferences is paramount. 
-How well does the Teaching Assistant personalize it's explanation of the given subject to the student? 
-Better personalization be given a higher score, and neglegting the student's learning preferences should be given a lower score.
-"""
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
-                                        criteria=criteria,
-                                        criteria_des=criteria_des)
-        chain = prompt | self.eval_model | JsonOutputParser()
-        return chain.invoke({"input": conversation})
-    def personalization_grade(self, run: Run, example: Example) -> dict:
-        """Output correctness grade to Langsmith."""
-        return {"key": "Personalization", "score": float(self.personalization_output['Grade'])}
-
-    def engagement(self, conversation):
-        """Evaluate correctness."""
-        criteria = "Engagement"
-        criteria_des = """
-The teaching assistant should engage the student in the conversation, making it interesting and interactive. Asking questions, providing examples, and encouraging participation are all ways to increase engagement.
-How engaging is the Teaching Assistant in the conversation?
-More engaging should be given a higher score, and less engaging should be given a lower score.
-"""
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
-                                        criteria=criteria,
-                                        criteria_des=criteria_des)
-        chain = prompt | self.eval_model | JsonOutputParser()
-        return chain.invoke({"input": conversation})
-    def engagement_grade(self, run: Run, example: Example) -> dict:
-        """Output correctness grade to Langsmith."""
-        return {"key": "Engagement", "score": float(self.engagement_output['Grade'])}
-
-    def repetition(self, conversation):
-        """Evaluate correctness."""
-        criteria = "Repetition"
-        criteria_des = """
-Repeating the same information multiple times can be necessary in order for the student to understand it, but should be conveyed in alternative ways by rephrasing and recontextualing.
-How well is the Teaching Assistant conveying the information without repeating itself?
-Avoiding the repeating of information should be given a higher score. If repeats are done, the ability to rephrase the same information in new ways should be given a higher score. Repeating information without altering it should be given a lower score.
-"""
-        prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
-                                        criteria=criteria,
-                                        criteria_des=criteria_des)
-        chain = prompt | self.eval_model | JsonOutputParser()
-        return chain.invoke({"input": conversation})
-    def repetition_grade(self, run: Run, example: Example) -> dict:
-        """Output repetition grade to Langsmith."""
-        return {"key": "Repetition", "score": float(self.repetition_output['Grade'])}
-
-
-
-
-
+        conversation = example.inputs["chat_history"]
+        evaluation = chain.invoke({"input": conversation})
+        self.eval_output = evaluation
+        return {
+        "results": [
+            # Provide the key, score and other relevant information for each metric
+            {"key": "Personalization", "score": evaluation['Personalization']['Personalization Grade'], "feedback": evaluation['Personalization']['Personalization Feedback']},
+            {"key": "Engagement", "score": evaluation['Engagement']['Engagement Grade'], "feedback": evaluation['Engagement']['Engagement Feedback']},
+            {"key": "Repetition", "score": evaluation['Repetition']['Repetition Grade'], "feedback": evaluation['Repetition']['Repetition Feedback']},
+            {"key": "conversation_length" , "score": len(conversation)}]}
 
 
 
@@ -268,10 +170,11 @@ Repetition Score: 0.75\n
     """
     # examples = ""
     langsmith_name =  "TAS_Eval_Dataset_"
-    # dataset_name = "TAS_GPT-4_EvaluationSet_1"
-    dataset_name = "TAS_GPT-3.5_EvaluationSet_1"
+    dataset_name = "TAS_GPT-4_EvaluationSet_1"
+    # dataset_name = "TAS_GPT-3.5_EvaluationSet_1"
     # dataset_name = "Eval_FewShotExamples"
     # dataset_name = "BASELINE_GPT-4"
+    # dataset_name = "Eval_Testing"
     langsmith_name = langsmith_name + dataset_name
     llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name=langsmith_name)
 
@@ -283,6 +186,176 @@ Repetition Score: 0.75\n
 
     # dataset_name = "TAS_v1_GPT4_Dataset"
     experiment_results = evaluator_class.run_evaluation(dataset_name=dataset_name)
+
+
+
+# class OtherEvaluationMetrics:
+#     """Class for other evaluation metrics."""
+
+#     def __init__(self):
+#         """Initialize."""
+#         pass
+
+#     def is_answered(self, run: Run, example: Example) -> dict:
+#         """Check if the question is answered."""
+#         conversation = run.outputs.get("Conversation")
+#         if not conversation:
+#             return {"key": "is_answered" , "score": 0}
+#         else:
+#             return {"key": "is_answered" , "score": 1}
+
+#     def conversation_length(self, run: Run, example: Example) -> dict:
+#         """Check the length of the conversation."""
+#         conversation = run.outputs.get("Conversation")
+#         return {"key": "conversation_length" , "score": len(conversation)}
+
+
+
+
+# class TasEvaluator:
+#     """Class for evaluating the TAS."""
+
+#     def __init__(self, eval_model, experiment_name: str, few_shot_examples: str):
+#         """Initialize."""
+#         self.eval_model = eval_model
+#         self.experiment_name = experiment_name
+#         self.few_shot_examples = few_shot_examples
+
+#     def build_eval_prompt(self, prompt_name: str, criteria: str, criteria_des: str):
+#         """Prompt for the TAS Evaluator."""
+#         prompt_hub_template = hub.pull(prompt_name).template
+#         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
+#         prompt = prompt_template.partial(criteria_name=criteria,
+#                                          criteria_description=criteria_des,
+#                                          few_shot_examples=self.few_shot_examples)
+#         return prompt
+
+#     def output_dataset(self, inputs: dict) -> dict:
+#         """Parse the dataset to extract the chat history which is evaluated upon."""
+#         chat_hist = inputs["chat_history"]
+#         conversation = str(chat_hist) #+ "\n" + second_last_message
+#         self.eval_output = self.eval(conversation=conversation)
+#         # self.personalization_output = self.personalization(conversation=conversation)
+#         # self.engagement_output = self.engagement(conversation=conversation)
+#         # self.repetition_output = self.repetition(conversation=conversation)
+#         return {"All"
+#                 "Evaluation": self.eval_output,
+#                 # "Personalization": self.personalization_output,
+#                 # "Engagement": self.engagement_output,
+#                 # "Repetition": self.repetition_output,
+#                 "Conversation": conversation}
+
+
+#     def run_evaluation(self, dataset_name):
+#         """Run the evaluation experiment."""
+#         other_metrics = OtherEvaluationMetrics()
+#         evalulators = [other_metrics.is_answered,
+#                        other_metrics.conversation_length,
+#                        self.eval_personalization_grade,
+#                        self.eval_engagement_grade,
+#                        self.eval_repetition_grade,
+#                     #    self.personalization_grade,
+#                     #    self.engagement_grade,
+#                     #    self.repetition_grade,
+#                        ]
+#         # Run
+#         experiment_results = evaluate(self.output_dataset,
+#                 data=dataset_name,
+#                 evaluators=evalulators,
+#                 experiment_prefix=self.experiment_name,
+#                 # max_concurrency=1,
+#                 # Any experiment metadata can be specified here
+#                 # metadata={"variant": "stuff website context into gpt-3.5-turbo",},
+#                 )
+#         return experiment_results
+
+
+#     def eval(self, conversation):
+#         """Evaluate correctness."""
+#         criteria = "- Personalization\n- Engagement\n- Repetition"
+#         criteria_description = """
+# Personalization Description:\n
+# The student states their personal learning preferences, and the Teaching Assistant should adapt to these preferences. Adapting it's explanations to these learning preferences is paramount. 
+# How well does the Teaching Assistant personalize it's explanation of the given subject to the student? 
+# Better personalization be given a higher score, and neglegting the student's learning preferences should be given a lower score.
+# \n\nEngagement Description:\n
+# The teaching assistant should engage the student in the conversation, making it interesting and interactive. Asking questions, providing examples, and encouraging participation are all ways to increase engagement.
+# How engaging is the Teaching Assistant in the conversation?
+# More engaging should be given a higher score, and less engaging should be given a lower score.
+# \n\nRepetition Description:\n
+# Repeating the same information multiple times can be necessary in order for the student to understand it, but should be conveyed in alternative ways by rephrasing and recontextualing.
+# How well is the Teaching Assistant conveying the information without repeating itself?
+# Avoiding the repeating of information should be given a higher score. If repeats are done, the ability to rephrase the same information in new ways should be given a higher score. Repeating information without altering it should be given a lower score.
+# """
+#         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-3criteria",
+#                                         criteria=criteria,
+#                                         criteria_des=criteria_description)
+#         chain = prompt | self.eval_model | JsonOutputParser()
+#         return chain.invoke({"input": conversation})
+
+#     def eval_personalization_grade(self, run: Run, example: Example) -> dict:
+#         """Output personalization grade to Langsmith."""
+#         return {"key": "Personalization", "score": float(self.eval_output['Personalization']['Personalization Grade'])}
+#     def eval_engagement_grade(self, run: Run, example: Example) -> dict:
+#         """Output engagement grade to Langsmith."""
+#         return {"key": "Engagement", "score": float(self.eval_output['Engagement']['Engagement Grade'])}, {"key": "Repetition", "score": float(self.eval_output['Repetition']['Repetition Grade'])}
+#     def eval_repetition_grade(self, run: Run, example: Example) -> dict:
+#         """Output repetition grade to Langsmith."""
+#         return {"key": "Repetition", "score": float(self.eval_output['Repetition']['Repetition Grade'])}
+
+
+
+
+#     def personalization(self, conversation):
+#         """Evaluate correctness."""
+#         criteria = "Personalization"
+#         criteria_des = """
+# The student states their personal learning preferences, and the Teaching Assistant should adapt to these preferences. Adapting it's explanations to these learning preferences is paramount. 
+# How well does the Teaching Assistant personalize it's explanation of the given subject to the student? 
+# Better personalization be given a higher score, and neglegting the student's learning preferences should be given a lower score.
+# """
+#         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
+#                                         criteria=criteria,
+#                                         criteria_des=criteria_des)
+#         chain = prompt | self.eval_model | JsonOutputParser()
+#         return chain.invoke({"input": conversation})
+#     def personalization_grade(self, run: Run, example: Example) -> dict:
+#         """Output correctness grade to Langsmith."""
+#         return {"key": "Personalization", "score": float(self.personalization_output['Grade'])}
+
+#     def engagement(self, conversation):
+#         """Evaluate correctness."""
+#         criteria = "Engagement"
+#         criteria_des = """
+# The teaching assistant should engage the student in the conversation, making it interesting and interactive. Asking questions, providing examples, and encouraging participation are all ways to increase engagement.
+# How engaging is the Teaching Assistant in the conversation?
+# More engaging should be given a higher score, and less engaging should be given a lower score.
+# """
+#         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
+#                                         criteria=criteria,
+#                                         criteria_des=criteria_des)
+#         chain = prompt | self.eval_model | JsonOutputParser()
+#         return chain.invoke({"input": conversation})
+#     def engagement_grade(self, run: Run, example: Example) -> dict:
+#         """Output correctness grade to Langsmith."""
+#         return {"key": "Engagement", "score": float(self.engagement_output['Grade'])}
+
+#     def repetition(self, conversation):
+#         """Evaluate correctness."""
+#         criteria = "Repetition"
+#         criteria_des = """
+# Repeating the same information multiple times can be necessary in order for the student to understand it, but should be conveyed in alternative ways by rephrasing and recontextualing.
+# How well is the Teaching Assistant conveying the information without repeating itself?
+# Avoiding the repeating of information should be given a higher score. If repeats are done, the ability to rephrase the same information in new ways should be given a higher score. Repeating information without altering it should be given a lower score.
+# """
+#         prompt = self.build_eval_prompt(prompt_name="augustsemrau/tas-evaluator-1criteria",
+#                                         criteria=criteria,
+#                                         criteria_des=criteria_des)
+#         chain = prompt | self.eval_model | JsonOutputParser()
+#         return chain.invoke({"input": conversation})
+#     def repetition_grade(self, run: Run, example: Example) -> dict:
+#         """Output repetition grade to Langsmith."""
+#         return {"key": "Repetition", "score": float(self.repetition_output['Grade'])}
 
 
 
