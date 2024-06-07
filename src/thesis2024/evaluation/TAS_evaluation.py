@@ -48,7 +48,7 @@ class TasEvaluator:
                 data=dataset_name,
                 evaluators=[self.eval],
                 experiment_prefix=self.experiment_name,
-                num_repetitions=5,
+                num_repetitions=3,
                 # max_concurrency=1,
                 # Any experiment metadata can be specified here
                 # metadata={"variant": "stuff website context into gpt-3.5-turbo",},
@@ -95,20 +95,22 @@ if __name__ == "__main__":
 
     examples = """
 CONVERSATION A:
+\n
 "Student: Hello, I am August!\nI am studying the course IntroToMachineLearning and am trying to learn about the subject Linear Regression.\nMy learning preferences are described as the following: I prefer formulas and math in order to understand technical concepts.\nPlease explain me this subject.
 \nTeaching Assistant: Linear regression involves fitting a regression model to data points to predict a target variable. In the case of a 1D dataset, feature transformations are applied to the data to fit models such as plain linear regression or second-degree polynomial regression. The weight vector is computed based on these transformations to make predictions for new data points.
 \nStudent: I'm not sure I understand the subject from this explanation. Can you explain it in a different way?
-\nTeaching Assistant: Linear regression involves fitting a regression model to data points to predict a target variable. In simple terms, we use mathematical formulas to find the best-fitting line or curve that represents the relationship between the input variables (features) and the output variable (target). By using techniques like feature transformations and computing weight vectors, we can make predictions for new data points. The key formula involved in linear regression is $w^* = (X^TX)^{-1}X^Ty$, where $w^*$ is the weight vector, X is the feature matrix, and y is the target variable. This formula helps us find the optimal weights to make accurate predictions."\n\n
+\nTeaching Assistant: Linear regression involves fitting a regression model to data points to predict a target variable. In simple terms, we use mathematical formulas to find the best-fitting line or curve that represents the relationship between the input variables (features) and the output variable (target). By using techniques like feature transformations and computing weight vectors, we can make predictions for new data points. The key formula involved in linear regression is $w^* = (X^TX)^{-1}X^Ty$, where $w^*$ is the weight vector, X is the feature matrix, and y is the target variable. This formula helps us find the optimal weights to make accurate predictions."
 \n\n
 EVALUATION FOR CONVERSATION A:\n
 Personalization Feedback: The Teaching Assistant initially does not use any math, and explains the subject using technical terms. Only when asked to explain the subject in a different way, does it use a little formulaic explanation, however this is not good.\n
 Personalization Score: 0.25\n
 Engagement Feedback: The Teaching Assistant does not engage the student in any way, and the explanations it gives are short and boiled down, which does not allow for engagement from the student's side.\n
 Engagement criteria Score: 0.0\n
-Repetition Feedback: In the second answer, the Teaching Assitant actually takes a different approach than in the first, and uses some math. However, it essentially repeats sentences such as the one about computing weights, which is undesireable.\n
+Repetition Feedback: In the second answer, the Teaching Assistant actually takes a different approach than in the first, and uses some math. However, it essentially repeats sentences such as the one about computing weights, which is undesirable.\n
 Repetition Score: 0.25\n
 \n\n\n
 CONVERSATION B:
+\n
 Student: Hello, I am August!\nI am studying the course IntroToMachineLearning and am trying to learn about the subject Linear Regression.\nMy learning preferences are described as the following: I prefer formulas and math in order to understand technical concepts.\nPlease explain me this subject.
 \nTeaching Assistant: Linear regression is a method used to model the relationship between a dependent variable $y$ and one or more independent variables $x$. In the simplest form, known as simple linear regression, the relationship is modeled as $y = mx + b$, where $m$ is the slope of the line and $b$ is the y-intercept. The goal is to find the values of $m$ and $b$ that best fit the data points.\n\nTo generalize to multiple independent variables, we can use multiple linear regression. In this case, the relationship is modeled as $y = w_0 + w_1x_1 + w_2x_2 + ... + w_nx_n$, where $w_0, w_1, w_2, ..., w_n$ are the coefficients to be determined.\n\nTo find the optimal values of the coefficients, we use a method called least squares, which minimizes the sum of the squared differences between the observed values and the values predicted by the model. This is typically done using matrix operations.\n\nIn summary, linear regression is a powerful tool for modeling relationships between variables and making predictions based on data points. It involves finding the best-fitting line or plane that represents the relationship between the variables.
 \nStudent: I'm not sure I understand the subject from this explanation. Can you explain it in a different way?
@@ -119,17 +121,18 @@ Personalization Feedback: The Teaching Assistant initially utilizes formulas to 
 Personalization Score: 0.50\n
 Engagement Feedback: The Teaching Assistant does not engage the student in any meaningful way.\n
 Engagement criteria Score: 0.0\n
-Repetition Feedback: In the second answer, the Teaching Assitant reuses the exact same explanation of the subject, which is not good.\n
+Repetition Feedback: In the second answer, the Teaching Assistant reuses the exact same explanation of the subject, which is not good.\n
 Repetition Score: 0.0\n
 \n\n\n
 CONVERSATION C:
+\n
 "Student: Hello, I am August!\nI am studying the course IntroToMachineLearning and am trying to learn about the subject Linear Regression.\nMy learning preferences are described as the following: I prefer formulas and math in order to understand technical concepts.\nPlease explain me this subject.
 \nTeaching Assistant: Linear regression models the relationship between a dependent variable $y$ and one or more independent variables $x$. The simplest form is simple linear regression, where there is only one independent variable. The model is represented by the equation:\n\n$$y = \\beta_0 + \\beta_1x + \\epsilon$$\n\nHere:\n- $y$ is the dependent variable.\n- $x$ is the independent variable.\n- $\\beta_0$ and $\\beta_1$ are coefficients that represent the intercept and the slope of the regression line, respectively.\n- $\\epsilon$ represents the error term, which accounts for the variability in $y$ that cannot be explained by $x$ alone.\n\nThe coefficients $\\beta_0$ and $\\beta_1$ are determined using the method of least squares. This method minimizes the sum of the squares of the residuals (the differences between observed values and the values predicted by the model). Mathematically, this is expressed as:\n\n$$\\min_{\\beta_0, \\beta_1} \\sum_{i=1}^n (y_i - (\\beta_0 + \\beta_1 x_i))^2$$\n\nWhere:\n- $y_i$ is the observed value of the dependent variable for the $i$-th observation.\n- $x_i$ is the value of the independent variable for the $i$-th observation.\n- $n$ is the number of observations.\n\nThis formulation allows us to estimate the parameters of the model that best fit the data, providing a predictive equation that can be used to estimate $y$ based on new values of $x$.\n\nIf you have data and want to see this model applied, or if you need further explanation on any of the terms or processes, feel free to ask!
 \nStudent: I'm not sure I understand the subject from this explanation. Can you explain it in a different way?
 \nTeaching Assistant: Certainly, August! Let's explore linear regression with a focus on the derivation of the least squares method, which helps us find the best-fitting line for the given data.\n\n### Step 1: Define the Error\nThe error for each data point is the difference between the observed value $y_i$ and the predicted value $\\hat{y}_i$. The predicted value is given by the linear model:\n\n$$\\hat{y}_i = \\beta_0 + \\beta_1 x_i$$\n\n### Step 2: Sum of Squared Errors\nThe goal is to find the values of $\\beta_0$ and $\\beta_1$ that minimize the sum of the squared errors (SSE). The SSE is defined as:\n\n$$SSE = \\sum_{i=1}^n (y_i - \\hat{y}_i)^2 = \\sum_{i=1}^n (y_i - (\\beta_0 + \\beta_1 x_i))^2$$\n\n### Step 3: Minimize SSE\nTo find the minimum SSE, we take the partial derivatives of SSE with respect to $\\beta_0$ and $\\beta_1$ and set them to zero.\n\n#### Derivative with respect to $\\beta_0$:\n$$\\frac{\\partial}{\\partial \\beta_0} SSE = -2 \\sum_{i=1}^n (y_i - \\beta_0 - \\beta_1 x_i) = 0$$\n\n#### Derivative with respect to $\\beta_1$:\n$$\\frac{\\partial}{\\partial \\beta_1} SSE = -2 \\sum_{i=1}^n x_i(y_i - \\beta_0 - \\beta_1 x_i) = 0$$\n\n### Step 4: Solve the Equations\nFrom the first equation, we can express $\\beta_0$:\n$$n \\beta_0 + \\beta_1 \\sum_{i=1}^n x_i = \\sum_{i=1}^n y_i$$\n$$\\beta_0 = \\frac{\\sum_{i=1}^n y_i - \\beta_1 \\sum_{i=1}^n x_i}{n}$$\n\nPlugging $\\beta_0$ into the second equation, we can solve for $\\beta_1$:\n$$\\beta_1 = \\frac{n \\sum_{i=1}^n x_i y_i - \\sum_{i=1}^n x_i \\sum_{i=1}^n y_i}{n \\sum_{i=1}^n x_i^2 - (\\sum_{i=1}^n x_i)^2}$$\n\n### Step 5: Interpretation\nThe values of $\\beta_0$ and $\\beta_1$ that satisfy these equations will minimize the SSE, providing the best fit line for the data. $\\beta_0$ is the intercept of the line, and $\\beta_1$ is the slope. This line can then be used to predict new values of $y$ given values of $x$.\n\nThis mathematical approach ensures that the linear regression model is the best possible linear approximation for the given data according to the least squares criterion. If you need further clarification or examples, feel free to ask!"
 \n\n
 EVALUATION FOR CONVERSATION C:\n
-Personalization Feedback: The Teaching Assitant uses extensive math-based explkanations, and writes several important formulas for the subject.\n
+Personalization Feedback: The Teaching Assistant uses extensive math-based explanations, and writes several important formulas for the subject.\n
 Personalization Score: 0.75\n
 Engagement Feedback: The Teaching Assistant ends each response with engaging the student, which is good. I could however, do this more elaborately.\n
 Engagement criteria Score: 0.50\n
