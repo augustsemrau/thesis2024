@@ -43,20 +43,12 @@ class TasEvaluator:
 
     def run_evaluation(self, dataset_name):
         """Run the evaluation experiment."""
-        # other_metrics = OtherEvaluationMetrics()
-        evalulators = [self.eval,
-                    #    other_metrics.is_answered,
-                    #    other_metrics.conversation_length,
-                    #    self.personalization_grade,
-                    #    self.engagement_grade,
-                    #    self.repetition_grade,
-                       ]
-        # Run
         experiment_results = evaluate(
                 self.output_dataset,
                 data=dataset_name,
-                evaluators=evalulators,
+                evaluators=[self.eval],
                 experiment_prefix=self.experiment_name,
+                num_repetitions=5,
                 # max_concurrency=1,
                 # Any experiment metadata can be specified here
                 # metadata={"variant": "stuff website context into gpt-3.5-turbo",},
@@ -71,13 +63,13 @@ class TasEvaluator:
 Personalization Description:\n
 The student states their personal learning preferences, and the Teaching Assistant should adapt to these preferences. Adapting it's explanations to these learning preferences is paramount. 
 How well does the Teaching Assistant personalize it's explanation of the given subject to the student? 
-Better personalization be given a higher score, and neglegting the student's learning preferences should be given a lower score.
+Better personalization be given a higher score, and neglecting the student's learning preferences should be given a lower score.
 \n\nEngagement Description:\n
 The teaching assistant should engage the student in the conversation, making it interesting and interactive. Asking questions, providing examples, and encouraging participation are all ways to increase engagement.
 How engaging is the Teaching Assistant in the conversation?
 More engaging should be given a higher score, and less engaging should be given a lower score.
 \n\nRepetition Description:\n
-Repeating the same information multiple times can be necessary in order for the student to understand it, but should be conveyed in alternative ways by rephrasing and recontextualing.
+Repeating the same information multiple times can be necessary in order for the student to understand it, but should be conveyed in alternative ways by rephrasing and re-contextualising.
 How well is the Teaching Assistant conveying the information without repeating itself?
 Avoiding the repeating of information should be given a higher score. If repeats are done, the ability to rephrase the same information in new ways should be given a higher score. Repeating information without altering it should be given a lower score.
 """
@@ -170,11 +162,11 @@ Repetition Score: 0.75\n
     """
     # examples = ""
     langsmith_name =  "TAS_Eval_Dataset_"
-    dataset_name = "TAS_GPT-4_EvaluationSet_1"
+    # dataset_name = "TAS_GPT-4_EvaluationSet_1"
     # dataset_name = "TAS_GPT-3.5_EvaluationSet_1"
     # dataset_name = "Eval_FewShotExamples"
     # dataset_name = "BASELINE_GPT-4"
-    # dataset_name = "Eval_Testing"
+    dataset_name = "Eval_Testing"
     langsmith_name = langsmith_name + dataset_name
     llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name=langsmith_name)
 
