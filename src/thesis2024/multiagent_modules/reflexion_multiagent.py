@@ -27,6 +27,7 @@ class ReflexionMultiAgent:
                  llm_model,
                  max_iter: int = 3,
                  course: str = "IntroToMachineLearning",
+                 subject: str = "Linear Regression",
                  learning_preferences: str = "",
                  ):
         """Initialize the Teaching Agent System."""
@@ -39,6 +40,7 @@ class ReflexionMultiAgent:
 
         self.max_iter = max_iter
         self.course = course
+        self.subject = subject
         self.learning_preferences = learning_preferences
 
         # Tools
@@ -48,92 +50,127 @@ class ReflexionMultiAgent:
         self.crag_tool = [self.tool_class.build_crag_tool(course_name=self.course)]
         self.coding_tool = [self.tool_class.build_coding_tool()]
 
-        self.general_prompt = ""#"You are working together with several other agents in a teaching assistance system."
-
-
-    def initial_plan(self, query: str, chat_hist: str=""):
+    def plan(self, query: str, chat_hist: str=""):
         """Create the initial plan."""
-        prompt_template = "{system_message}\n\nYou are an expert responsible for creating the initial plan for the response to the student's query:\n{query}\n\nYou must make sure that this plan does not Begin!\n\nThis is the conversation so far, avoid repeating yourself:\n{chat_hist}"
+        prompt_template = """You are an expert teacher, tasked with writing an outline for personalized teaching material.
+The subject is {subject} from the course {course}.
+The student has the following learning preferences, which must be adhered to:
+{learning_preferences}.
+\nMake sure that the answer does not repeat the same content as previous answers, if any:\n{chat_hist}
+\n\nNow, write a high level outline for answering the following question:\n{query}
+\nBegin!
+"""
         prompt = PromptTemplate(input_variables=["query"], template=prompt_template)
-        prompt = prompt.partial(system_message=self.general_prompt)
-        llm_temp = self.llm_model
-        chain = prompt | llm_temp | StrOutputParser()
+        prompt = prompt.partial(subject=self.subject,
+                                course=self.course,
+                                learning_preferences=self.learning_preferences,
+                                chat_hist=chat_hist)
+        chain = prompt | self.llm_model | StrOutputParser()
         return chain.invoke(query)
 
 
-    def crag(self, query: str):#, chat_history: str):#draft: str="", critique: str=""):
+    def research_plan(self, outline: str):
         """Build the crag retrieval agent."""
-        prompt_hub_template = hub.pull("augustsemrau/crag-agent-prompt-2").template
+        prompt_hub_template = hub.pull("augustsemrau/crag-agent-prompt-3").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
-        prompt = prompt_template.partial()#chat_history=chat_history)#draft=draft, critique=critique)
+        prompt = prompt_template.partial()
         crag_agent = create_react_agent(llm=self.llm_model,
                                        tools=self.crag_tool,
                                        prompt=prompt)
         executor = AgentExecutor(agent=crag_agent,
                                            tools=self.crag_tool,
-                                           verbose=True,
+                                           verbose=False,
                                            handle_parsing_errors=True)
-        retrieved_info = executor.invoke({"input": query})["output"]
-        # self.tool_class.run_crag_function(search_query=query, course=self.course)
+        retrieved_info = executor.invoke({"input": outline})["output"]
         return retrieved_info
 
 
-    def initial_draft(self, query: str, retrieved_info: str, chat_hist: str=""):
+    def initial_draft(self, outline: str, retrieved_info: str):
         """First draft of the subgraph."""
-        prompt_template = "{system_message}\n\nYou are an expert in writing personalized teaching material, and responsible for creating the first draft of the response to the student's query:\n{query}\n\nHere is some external information which may help with improving the draft:\n{retrieved_info}\n\nBegin!\n\nThis is the conversation so far, avoid repeating yourself:\n{chat_hist}"
-        prompt = PromptTemplate(input_variables=["query"], template=prompt_template)
-        prompt = prompt.partial(system_message=self.general_prompt,
-                                retrieved_info=retrieved_info,
+        prompt_template = """You are an expert teacher tasked with writing personalized teaching material.
+Here is the student's learning preferences, which must be adhered to:
+{learning_preferences}
+\n\nThis information may help you:
+{retrieved_info}
+\n\nGenerate the best personalized teaching material possible, based on the following initial outline.
+{outline}
+"""
+        prompt = PromptTemplate(input_variables=["outline"], template=prompt_template)
+        prompt = prompt.partial(learning_preferences=self.learning_preferences,
+                                retrieved_info=retrieved_info)
+        chain = prompt | self.llm_model | StrOutputParser()
+        return chain.invoke(outline)
+
+    def critique_draft(self, query: str, draft: str, chat_hist: str=""):
+        """Critique the draft."""
+        prompt_template = """You are an expert teaching, critiquing personalized teaching material.
+The material is an answer to the following query:
+{query}
+\nThese are the learning preferences of the student:\n{learning_preferences}
+\nIt is very important that the material does not repeat the same content as previous interactions, if there have been any.
+These are the interactions so far:
+{chat_hist}
+\n\nYour critique must be MAX 5 sentences.
+The personalized teaching material you must critique is the following:
+{draft}
+"""
+        prompt = PromptTemplate(input_variables=["draft"], template=prompt_template)
+        prompt = prompt.partial(query=query,
+                                learning_preferences=self.learning_preferences,
                                 chat_hist=chat_hist)
-        llm_temp = self.llm_model
-        chain = prompt | llm_temp | StrOutputParser()
-        return chain.invoke(query)
+        chain = prompt | self.llm_model | StrOutputParser()
+        return chain.invoke(draft)
 
 
     def new_draft(self, old_draft: str, critique: str, chat_hist: str=""):
         """Create a new draft."""
-        prompt_template = "{system_message}\n\nYou are responsible for generating an improved draft given some critique.\n\nThe original draft you must improve is the following:\n{old_draft}\n\nThis draft has been given the following critique:\n{critique}\n\nbased on this critique, improve the draft.\n\nBegin!\n\nThis is the conversation so far, avoid repeating yourself:\n{chat_hist}"
+        prompt_template = """You are an expert teacher, responsible for improving personalized teaching material which has been critiqued.
+The original material you must improve in accordance to the critique is the following:
+{old_draft}
+\nBased on the following critique, improve the personalized teaching material:
+{critique}
+"""
         prompt = PromptTemplate(input_variables=["critique"], template=prompt_template)
-        prompt = prompt.partial(system_message=self.general_prompt,
-                                old_draft=old_draft,
+        prompt = prompt.partial(old_draft=old_draft,
                                 chat_hist=chat_hist)
         llm_temp = self.llm_model
         chain = prompt | llm_temp | StrOutputParser()
         return chain.invoke(critique)
 
 
-
-
-    def critique_draft(self, query: str, draft: str, chat_hist: str=""):
-        """Critique the draft."""
-        prompt_template = "{system_message}\n\nYou are an expert teaching material supervisor. responsible for critiquing a draft of the response to the student's query:\n\n{query}\n\nYour critique must be MAX 5 sentences.\nThe draft you must critique is the following:\n{draft}\n\nBegin!\n\nThis is the conversation so far:\n{chat_hist}"
+    def final_draft(self, draft: str):
+        """Create the final draft."""
+        prompt_template = """You are an expert writer.
+The following personalized teaching material has been critiqued and improved, but some of the critique may have been left inside.
+\nFinalize the material by rewriting it to be a coherent piece of text, suitable for a student to read.
+You should remove any unnecessary information which is not relevant to the student, but keep all points, the scope and length of the material.
+\n\nFinalize the following personalized teaching material:
+{draft}
+"""
         prompt = PromptTemplate(input_variables=["draft"], template=prompt_template)
-        prompt = prompt.partial(system_message=self.general_prompt,
-                                query=query,
-                                chat_hist=chat_hist)
-        llm_temp = self.llm_model
-        chain = prompt | llm_temp | StrOutputParser()
+        chain = prompt | self.llm_model | StrOutputParser()
         return chain.invoke(draft)
 
 
 
     def build_reflexion_tool(self):
         """Build the subgraph tool."""
-
         def reflexiontool(query: str):
             """Invoke the Reflexion Subgraph."""
             chat_hist = self.short_term_memory.buffer
-            plan = self.initial_plan(query=query, chat_hist=chat_hist)
-            retrieved_info = ""#self.crag(query=query)
-            print(f"Retrieved information:\n{retrieved_info}\n\n")
-            draft = self.initial_draft(query=query, retrieved_info=retrieved_info, chat_hist=chat_hist)
-            print(f"Initial draft:\n{draft}\n\n")
+            outline = self.plan(query=query, chat_hist=chat_hist)
+            print(f"Outline:\n{outline}\n\n")
+            retrieved_info = self.research_plan(outline=outline)
+            # print(f"Retrieved information:\n{retrieved_info}\n\n")
+            draft = self.initial_draft(outline=outline, retrieved_info=retrieved_info)
+            # print(f"Initial draft:\n{draft}\n\n")
             for i in range(self.max_iter):
                 critique = self.critique_draft(query=query, draft=draft, chat_hist=chat_hist)
-                print(f"Critique:\n{critique}\n\n")
+                # print(f"Critique:\n{critique}\n\n")
                 draft = self.new_draft(old_draft=draft, critique=critique, chat_hist=chat_hist)
-                print(f"\n\nIteration {i}:\n{draft}\n\n")
-            response = draft
+                # print(f"\n\nIteration {i}:\n{draft}\n\n")
+            final_draft = self.final_draft(draft=draft)
+            response = final_draft
             return response
 
         reflexion_tool = StructuredTool.from_function(
@@ -143,7 +180,6 @@ class ReflexionMultiAgent:
                             return_direct=True
                             )
         return reflexion_tool
-
 
     def build_finishconversation_tool(self):
         """Build the finish conversation tool."""
@@ -157,7 +193,6 @@ class ReflexionMultiAgent:
                             return_direct=True
                             )
         return end_finishconversation_tool
-
 
     def build_executor(self):
         """Build the Reflexion Multi-Agent System."""
@@ -199,10 +234,11 @@ if __name__ == "__main__":
 
     student_query = f"Hello, I am {student_name}!\nI am studying the course {student_course} and am trying to learn about the subject {student_subject}.\nMy learning preferences are described as the following: {student_learning_preferences}.\nPlease explain me this subject."
 
-    llm_model = init_llm_langsmith(llm_key=3, temp=0.2, langsmith_name="REFLEXION TEST")
+    llm_model = init_llm_langsmith(llm_key=3, temp=0.5, langsmith_name="REFLEXION TEST")
     reflexion = ReflexionMultiAgent(llm_model=llm_model,
                                     max_iter=2,
                                     course=student_course,
+                                    subject=student_subject,
                                     learning_preferences=student_learning_preferences,
                                     )
 
