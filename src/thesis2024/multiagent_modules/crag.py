@@ -98,7 +98,7 @@ class Crag():
             state (dict): New key added to state, documents, that contains retrieved documents
 
         """
-        print("---RETRIEVE---")
+        # print("---RETRIEVE---")
         state_dict = state["keys"]
         question = state_dict["question"]
         documents = self.retriever.get_relevant_documents(question)
@@ -116,7 +116,7 @@ class Crag():
             state (dict): New key added to state, generation, that contains LLM generation
 
         """
-        print("---GENERATE---")
+        # print("---GENERATE---")
         state_dict = state["keys"]
         question = state_dict["question"]
         documents = state_dict["documents"]
@@ -152,7 +152,7 @@ class Crag():
             state (dict): Updates documents key with relevant documents
 
         """
-        print("---CHECK RELEVANCE---")
+        # print("---CHECK RELEVANCE---")
         state_dict = state["keys"]
         question = state_dict["question"]
         documents = state_dict["documents"]
@@ -225,7 +225,7 @@ class Crag():
             state (dict): Updates question key with a re-phrased question
 
         """
-        print("---TRANSFORM QUERY---")
+        # print("---TRANSFORM QUERY---")
         state_dict = state["keys"]
         question = state_dict["question"]
         documents = state_dict["documents"]
@@ -263,7 +263,7 @@ class Crag():
             state (dict): Updates documents key with appended web results
 
         """
-        print("---WEB SEARCH---")
+        # print("---WEB SEARCH---")
         state_dict = state["keys"]
         question = state_dict["question"]
         documents = state_dict["documents"]
@@ -288,7 +288,7 @@ class Crag():
             str: Next node to call
 
         """
-        print("---DECIDE TO GENERATE---")
+        # print("---DECIDE TO GENERATE---")
         state_dict = state["keys"]
         question = state_dict["question"]
         filtered_documents = state_dict["documents"]
@@ -297,11 +297,11 @@ class Crag():
         if search == "Yes":
             # All documents have been filtered check_relevance
             # We will re-generate a new query
-            print("---DECISION: TRANSFORM QUERY and RUN WEB SEARCH---")
+            # print("---DECISION: TRANSFORM QUERY and RUN WEB SEARCH---")
             return "transform_query"
         else:
             # We have relevant documents, so generate answer
-            print("---DECISION: GENERATE---")
+            # print("---DECISION: GENERATE---")
             return "generate"
 
     def build_rag_graph(self):
