@@ -1,10 +1,6 @@
 """Teaching Agent System (TAS) for the thesis2024 project."""
 
 # Langchain imports
-from langchain import hub
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.memory import ConversationBufferMemory
-from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage
 
 # Tool imports
@@ -12,7 +8,6 @@ from langchain.tools import StructuredTool
 
 # Local imports
 from thesis2024.utils import init_llm_langsmith
-from thesis2024.tools import ToolClass
 from thesis2024.PMAS import LongTermMemory
 
 
@@ -82,9 +77,9 @@ class TMAS:
 
     def predict(self, query):
         """Invoke the Teaching Multi-Agent System."""
-        print("\n\nUser Query:", query)
-        response = self.tmas_class.predict(query=student_query)
-        print("\n\nResponse:\n", res)
+        # print("\n\nUser Query:", query)
+        response = self.tmas_class.predict(query=query)
+        # print("\n\nResponse:\n", response)
         if self.student_id is not None:
             self.long_term_memory_class.save_conversation_step(user_query=query, llm_response=response)
         return response
