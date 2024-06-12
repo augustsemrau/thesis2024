@@ -92,7 +92,9 @@ Here is the student's learning preferences, which must be adhered to:
 {learning_preferences}
 \n\nThis information may help you:
 {retrieved_info}
-\n\nGenerate the best personalized teaching material possible, based on the following initial outline.
+\n\nGenerate the best personalized teaching material possible.
+The material should be coherent and easy to understand for the student.
+Use the following outline as a starting point for what topics to include, and the order to write them in.
 {outline}
 """
         prompt = PromptTemplate(input_variables=["outline"], template=prompt_template)
@@ -127,7 +129,8 @@ The personalized teaching material you must critique is the following:
         prompt_template = """You are an expert teacher, responsible for improving personalized teaching material which has been critiqued.
 The original material you must improve in accordance to the critique is the following:
 {old_draft}
-\nBased on the following critique, improve the personalized teaching material:
+\nDO NOT incorporate the critique itself into the new material.
+Based on the following critique, improve the personalized teaching material:
 {critique}
 """
         prompt = PromptTemplate(input_variables=["critique"], template=prompt_template)
@@ -144,6 +147,7 @@ The original material you must improve in accordance to the critique is the foll
 The following personalized teaching material has been critiqued and improved, but some of the critique may have been left inside.
 \nFinalize the material by rewriting it to be a coherent piece of text, suitable for a student to read.
 You should remove any unnecessary information which is not relevant to the student, but keep all points, the scope and length of the material.
+Never remove mathematical formulas or code examples, as they are crucial for the student's understanding.
 \n\nFinalize the following personalized teaching material:
 {draft}
 """
@@ -169,9 +173,8 @@ You should remove any unnecessary information which is not relevant to the stude
                 # print(f"Critique:\n{critique}\n\n")
                 draft = self.new_draft(old_draft=draft, critique=critique, chat_hist=chat_hist)
                 # print(f"\n\nIteration {i}:\n{draft}\n\n")
-            final_draft = self.final_draft(draft=draft)
-            response = final_draft
-            return response
+            draft = self.final_draft(draft=draft)
+            return draft
 
         reflexion_tool = StructuredTool.from_function(
                             name="Reflexion Tool",
@@ -228,8 +231,8 @@ if __name__ == "__main__":
     student_name = "August"
     student_course = "IntroToMachineLearning"
     student_subject = "Linear Regression"
-    student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
-    # student_learning_preferences = "I prefer code examples in order to understand technical concepts"
+    # student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
+    student_learning_preferences = "I prefer code examples in order to understand technical concepts"
     # student_learning_preferences = "I prefer text-based explanations and metaphors in order to understand technical concepts"
 
     student_query = f"Hello, I am {student_name}!\nI am studying the course {student_course} and am trying to learn about the subject {student_subject}.\nMy learning preferences are described as the following: {student_learning_preferences}.\nPlease explain me this subject."

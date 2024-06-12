@@ -12,12 +12,6 @@ import chainlit as cl
 from thesis2024.utils import init_llm_langsmith
 from thesis2024.PMAS import LongTermMemory
 from thesis2024.tools import ToolClass
-from thesis2024.multiagent_modules.coding_agent import CodingMultiAgent
-
-
-
-
-
 
 
 
@@ -27,11 +21,12 @@ class TAS:
     def __init__(self,
                  llm_model,
                  baseline_bool = False,
-                 student_id=None,
                  student_name: str = "August",
                  course: str = "IntroToMachineLearning",
                  subject: str = "Linear Regression",
                  learning_prefs: str = "Prefers visual representations of the subject",
+                 student_id=None,
+                 ltm_query="",
                  ):
         """Initialize the Teaching Agent System."""
         self.llm_model = llm_model
@@ -53,7 +48,7 @@ class TAS:
                                                 course_name=course,
                                                 subject_name=subject,
                                                 learning_preferences=learning_prefs,
-                                                ltm_query="")
+                                                ltm_query=ltm_query)
         self.build_executor(ver=baseline_bool)
 
     def build_executor(self, ver):
@@ -65,11 +60,11 @@ class TAS:
             self.tas_executor = self.build_nonagenic_baseline()
             self.output_tag = "response"
 
-    def build_tas_prompt(self, student_name, course_name, subject_name, learning_preferences, ltm_query=""):
+    def build_tas_prompt(self, student_name, course_name, subject_name, learning_preferences, ltm_query):
         """Build the agent prompt."""
         facts = "No prior conversations for this student."
-        if self.student_id is not None:
-            facts = self.long_term_memory_class.get_user_semantic_memories(query=ltm_query)
+        if self.student_id is not None and ltm_query != "":
+            facts = self.long_term_memory_class.predict(query=ltm_query)
         prompt_hub_template = hub.pull("augustsemrau/react-tas-prompt-2").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
         prompt = prompt_template.partial(student_name=student_name,
@@ -107,7 +102,7 @@ This is the conversation so far:
                  tool_class.build_retrieval_tool(course_name=self.course),
                  tool_class.build_coding_tool(),
                 #  tool_class.build_math_tool(),
-                 ]
+                ]
 
         tas_agent = create_react_agent(llm=self.llm_model,
                                        tools=tools,
@@ -130,6 +125,12 @@ This is the conversation so far:
         if self.student_id is not None:
             self.long_term_memory_class.save_conversation_step(user_query=query, llm_response=response)
         return response
+
+    def save_conversation_step(self, user_query, llm_response):
+        """Save the conversation step in the long-term memory."""
+        if self.student_id is not None:
+            self.long_term_memory_class.save_conversation_step(user_query=user_query, llm_response=llm_response)
+        return None
 
 
     """TODO (DOES NOT WORK) Predict function for invoking the initiated TAS asynchronously for use in Chainlit frontend."""
@@ -170,9 +171,7 @@ if __name__ == '__main__':
             )
 
     res = tas.predict(query=student_query)
-
     res = tas.predict(query="I'm not sure I understand the subject from this explanation. Can you explain it in a different way?")
-
     res = tas.predict(query="Thank you for the help, have a nice day!")
 
 
