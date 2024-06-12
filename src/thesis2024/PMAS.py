@@ -53,90 +53,71 @@ def get_user_uuid_and_create_thread_id(user: str) -> str:
 
     return user_uuid, user_name, current_thread_id, past_thread_ids
 
+
+
 """User State"""
-class User(BaseModel):
-    """A user in the system."""
-
-    name: str = Field(default=None,
-        description="The name of the user.",
-        )
-    education: str = Field(default=None,
-        description="The education which the user undertakes.",
-        )
-
 class UserProfile(BaseModel):
     """A user's profile."""
 
-    preferred_name: str = Field(default=None, 
-        description="The user's name.",
+    student_name: str = Field(default=None,
+        description="The name of the student.",
         )
     summary: str = Field(default="",
         description="A quick summary of how the user would describe themselves.",
         )
-    interests: List[str] = Field(default_factory=list,
-        description="Short (two to three word) descriptions of areas of particular interest for the user. This can be a concept, activity, or idea. Favor broad interests over specific ones.",
+    education: str = Field(default=None,
+        description="The education which the studernt undertakes.",
         )
-    # relationships: List[User] = Field(default_factory=user,
-    #     description="A list of friends, family members, colleagues, and other relationships.",
-    #     )
-    other_info: List[str] = Field(default_factory=list,
-        description="",
+    courses: List[str] = Field(default_factory=list,
+        description="The courses the student is currently taking.",
+        )
+    learning_preferences: str = Field(default="",
+        description="The learning preferences of the student."
         )
 
 """User Append State"""
-class CoreBelief(BaseModel):
-    """A core belief of the user."""
+class LearningPreference(BaseModel):
+    """A learning preference of the user."""
 
-    belief: str = Field(default="",
-        description="The belief the user has about the world, themselves, or anything else.",
+    learning_preference: str = Field(default="",
+        description="The learning preference.",
         )
     why: str = Field(default="",
-        description="Why the user believes this.",
+        description="Why the user prefers this way of teaching.",
         )
     context: str = Field(default="",
-        description="The raw context from the conversation that leads you to conclude that the user believes this."
+        description="The context and perhaps courses/subjects in which this learning prefernce is apparent.",
         )
-class FormativeEvent(BaseModel):
-    """Formative events for the user."""
+    source_comment: str = Field(default="",
+        description="The raw user utterance where you identified this preference.",
+        )
 
-    event: str = Field(default="",
-        description="The event that occurred. Must be important enough to be formative for the student.",
-        )
-    impact: str = Field(default="",
-        description="How this event influenced the user."
-        )
 class SubjectComprehension(BaseModel):
     """Formative events for the user."""
 
     subject: str = Field(default="",
-        description="The subject which the user discussed in this interaction/conversation.",
+        description="The subject which the student discussed in this interaction/conversation.",
         )
     comprehension: str = Field(default="",
         description="How well did the user comprehend this subject? Did they show clear comprehension, a lack of comprehension, or not show whether their comprehend the subject?"
         )
+
 """Thread State"""
 class ConversationSummary(BaseModel):
     """Summary of a conversation."""
 
-    title: str = Field(description="Concise 2-5 word title for conversation.")
-    summary: str = Field(description="High level summary of the interactions.")
-    topic: List[str] = Field(description="Tags for topics discussed in this conversation.")
+    title: str = Field(default="",
+        description="Concise 2-5 word title for conversation.",
+        )
+    summary: str = Field(default="",
+        description="High level summary of the interactions.",
+        )
+    topic: List[str] = Field(default_factory=list,
+        description="Tags for topics discussed in this conversation.",
+        )
 
 
 
-# TODO: EXAMPLE FROM LANGMEM DOCS
-# class LearningPreference(BaseModel):
-#    learning_preference: str = Field(description="The learning preference.")
-#    why: str = Field(description="Why the user prefers this way of teaching.")
-#    context: str = Field(description="The context and perhaps courses/subjects in which this learning prefernce is appropriate")
-#    source_comment: str = Field(description="The raw user utterance where you identified this preference.")
-
-# client = Client()
-# memory_function = client.create_memory_function(
-#    LearningPreference,
-#    target_type="user_append_state",
-#    custom_instructions="Extract as many preferences from the conversation as you are able."
-# )
 
 
 
@@ -148,14 +129,23 @@ class LongTermMemory:
         self.async_client = AsyncClient()
         self.client = Client()
         self.user_id, self.user_name, self.thread_id, self.past_thread_ids = get_user_uuid_and_create_thread_id(user=user_name)
+
         self.user_semantic_memory_function = self.get_user_semantic_memory_function()
 
         # Create memory functions
-        self.user_state_function = self.client.create_memory_function(UserProfile, target_type="user_state")
-        self.belief_function = self.client.create_memory_function(CoreBelief, target_type="user_append_state")
-        self.event_function = self.client.create_memory_function(FormativeEvent, target_type="user_append_state")
-        self.subject_comprehension_function = self.client.create_memory_function(SubjectComprehension, target_type="user_append_state")
-        self.thread_summary_function = self.client.create_memory_function(ConversationSummary, target_type="thread_summary")
+        ## User State
+        self.user_state_function = self.client.create_memory_function(UserProfile,
+                                                                      target_type="user_state")
+        ## User Append State
+        self.user_learning_preference_function = self.client.create_memory_function(LearningPreference,
+                                                                                    target_type="user_append_state",
+                                                                                    custom_instructions="Identify what learning preferences the student may have, which are apparent in the conversation.")
+        self.subject_comprehension_function = self.client.create_memory_function(SubjectComprehension,
+                                                                                 target_type="user_append_state",
+                                                                                 custom_instructions="Extract the subjects delved with in the conversation.")
+        ## Thread State
+        self.thread_summary_function = self.client.create_memory_function(ConversationSummary,
+                                                                          target_type="thread_summary")
 
     def get_user_semantic_memory_function(self):
         """Retrieve the user semantic memory function."""
@@ -163,12 +153,9 @@ class LongTermMemory:
         for func in functions:
             if func["type"] == "user_semantic_memory":
                 return func
-
-
     def get_user_data(self):
         """Retrieve data on the user."""
         return self.client.get_user(user_id=self.user_id)
-
     def save_conversation_step(self, user_query, llm_response):
         """Save a conversation step in the long-term memory."""
         conversation_step = [
@@ -195,7 +182,7 @@ class LongTermMemory:
                         k=10,
                         memory_function_ids=[self.user_semantic_memory_function["id"]],
                         )
-        print(memories)
+        # print(memories)
         if query == "":
             sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["importance"], reverse=True)
         else:
@@ -203,8 +190,7 @@ class LongTermMemory:
         facts = ".\n".join([mem["text"] for mem in sorted_memories])
         return facts
 
-
-    def get_user_state(self, query: str=""):
+    def get_user_state(self):
         """Retrieve long term memories for the relevant user."""
         # user_state = None
         # while not user_state:
@@ -212,25 +198,24 @@ class LongTermMemory:
                     user_id=self.user_id,
                     memory_function_id=self.user_state_function["id"]
                     )
-        print(user_state)
+        print("\n\nUser Profile: ", user_state)
         return user_state
 
-    def get_user_append_memories(self, query: str = ""):
+    def get_learning_preference_memories(self, query: str = ""):
         """Retrieve long term memories for the relevant user."""
         memories = self.client.query_user_memory(
                         user_id=self.user_id,
                         text=query,
                         k=10,
-                        memory_function_ids=[self.belief_function["id"], self.event_function["id"]],
+                        memory_function_ids=[self.user_learning_preference_function["id"]],
                         )
-        print(memories)
+        print("\n\nLearning preference memories: ",memories)
         if query == "":
             sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["importance"], reverse=True)
         else:
             sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["relevance"], reverse=True)
         facts = ".\n".join([mem["text"] for mem in sorted_memories])
         return facts
-
 
     def get_subject_comprehension_memories(self, query: str = ""):
         """Retrieve long term memories for the relevant user."""
@@ -240,14 +225,13 @@ class LongTermMemory:
                         k=10,
                         memory_function_ids=[self.subject_comprehension_function["id"]],
                         )
-        print(memories)
+        print("\n\nSubject comprehension memories: ", memories)
         if query == "":
             sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["importance"], reverse=True)
         else:
             sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["relevance"], reverse=True)
         facts = ".\n".join([mem["text"] for mem in sorted_memories])
         return facts
-
 
     def get_thread_summaries(self):
         """Retrieve the summaries for all threads."""
@@ -262,10 +246,48 @@ class LongTermMemory:
             except Exception:
                 print(f"No memories for thread id {thread_id}")
                 continue
-        print(thread_summaries)
+        return thread_summaries
+
+    def predict(self, query: str):
+        """Invoke the Long-Term Memory to retrieve all TAS-relevant personal memory."""
+        tas_relevant_memories = ""
+        tas_relevant_memories += f"Student Profile: {self.get_user_state()}\n\n"
+        tas_relevant_memories += f"Learning Preferences for the Student: {self.get_learning_preference_memories(query=query)}\n\n"
+        tas_relevant_memories += f"These are the Subjects the Student has Interacted with: {self.get_subject_comprehension_memories(query=query)}\n\n"
+
+        if tas_relevant_memories == "":
+            return "No relevant memories found in all local data."
+        else:
+            return tas_relevant_memories
 
 
+class PMAS:
+    """Personal Memory Augent System (PMAS) for the thesis2024 project."""
 
+    def __init__(self, llm_model, student_id="AugustSemrau_PMAS_Test1"):
+        """Initialize the PMAS."""
+        self.ltm_class = LongTermMemory(user_name=student_id)
+
+    def predict(self, query: str):
+        """Invoke the Personal Memory Augmented System to retrieve all TAS-relevant personal memory."""
+        tas_relevant_memories = self.ltm_class.predict(query=query)
+        return tas_relevant_memories
+
+    def save_conversation_step(self, user_query, llm_response):
+        """Save a conversation step in the long-term memory."""
+        self.ltm_class.save_conversation_step(user_query=user_query, llm_response=llm_response)
+
+    def get_user_state(self):
+        """Retrieve the user state."""
+        return self.ltm_class.get_user_state()
+
+    def get_learning_preference_memories(self, query: str = ""):
+        """Retrieve learning preference memories."""
+        return self.ltm_class.get_learning_preference_memories(query=query)
+
+    def get_subject_comprehension_memories(self, query: str = ""):
+        """Retrieve subject comprehension memories."""
+        return self.ltm_class.get_subject
 
 
 
@@ -277,6 +299,46 @@ if __name__ == "__main__":
     ltm_class.past_thread_ids
 
 
+
+
+# class User(BaseModel):
+#     """A user in the system."""
+
+#     name: str = Field(default=None,
+#         description="The name of the user.",
+#         )
+#     education: str = Field(default=None,
+#         description="The education which the user undertakes.",
+#         )
+#     courses: List[str] = Field(default_factory=list,
+#         description="The courses the user is currently taking.",
+#         )
+
+
+# self.belief_function = self.client.create_memory_function(CoreBelief, target_type="user_append_state")
+# self.event_function = self.client.create_memory_function(FormativeEvent, target_type="user_append_state")
+
+# class CoreBelief(BaseModel):
+#     """A core belief of the user."""
+
+#     belief: str = Field(default="",
+#         description="The belief the user has about the world, themselves, or anything else.",
+#         )
+#     why: str = Field(default="",
+#         description="Why the user believes this.",
+#         )
+#     context: str = Field(default="",
+#         description="The raw context from the conversation that leads you to conclude that the user believes this."
+#         )
+# class FormativeEvent(BaseModel):
+#     """Formative events for the user."""
+
+#     event: str = Field(default="",
+#         description="The event that occurred. Must be important enough to be formative for the student.",
+#         )
+#     impact: str = Field(default="",
+#         description="How this event influenced the user."
+#         )
 
 
 # from typing import List
