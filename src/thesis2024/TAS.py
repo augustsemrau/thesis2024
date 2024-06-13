@@ -65,7 +65,7 @@ class TAS:
         facts = "No prior conversations for this student."
         if self.student_id is not None and ltm_query != "":
             facts = self.long_term_memory_class.predict(query=ltm_query)
-        prompt_hub_template = hub.pull("augustsemrau/react-tas-prompt-2").template
+        prompt_hub_template = hub.pull("augustsemrau/react-tas-prompt-3").template
         prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
         prompt = prompt_template.partial(student_name=student_name,
                                          course_name=course_name,
@@ -100,8 +100,7 @@ This is the conversation so far:
         tool_class = ToolClass()
         tools = [tool_class.build_search_tool(),
                  tool_class.build_retrieval_tool(course_name=self.course),
-                 tool_class.build_coding_tool(),
-                #  tool_class.build_math_tool(),
+                #  tool_class.build_coding_tool(),
                 ]
 
         tas_agent = create_react_agent(llm=self.llm_model,
