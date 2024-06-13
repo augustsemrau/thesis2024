@@ -262,7 +262,7 @@ class LongTermMemory:
                 print(f"Thread id {thread_id} has the following summary: {thread_summary}")
 
             except Exception:
-                print(f"No memories for thread id {thread_id}")
+                # print(f"No memories for thread id {thread_id}")
                 continue
         return thread_summaries
 
