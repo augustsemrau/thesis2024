@@ -5,13 +5,20 @@ import uuid
 import csv
 import os
 
-# Local imports
-from thesis2024.utils import init_llm_langsmith
+# LangChain Imports
+from langchain import hub
+from langchain.prompts import PromptTemplate
+from langchain.agents import AgentExecutor, create_react_agent
 
 # LangMem Imports
 from langmem import AsyncClient, Client
 from typing import List
 from pydantic import BaseModel, Field
+
+# Local imports
+from thesis2024.utils import init_llm_langsmith
+from thesis2024.tools import ToolClass
+
 
 def get_user_uuid_and_create_thread_id(user: str) -> str:
     """Get the UUID of the user if already existing, otherwise create and store new id."""
@@ -52,8 +59,6 @@ def get_user_uuid_and_create_thread_id(user: str) -> str:
         writer.writerows(rows)
 
     return user_uuid, user_name, current_thread_id, past_thread_ids
-
-
 
 """User State"""
 class UserProfile(BaseModel):
@@ -115,9 +120,6 @@ class ConversationSummary(BaseModel):
     topic: List[str] = Field(default_factory=list,
         description="Tags for topics discussed in this conversation.",
         )
-
-
-
 
 
 
@@ -233,6 +235,22 @@ class LongTermMemory:
         facts = ".\n".join([mem["text"] for mem in sorted_memories])
         return facts
 
+    def get_subject_comprehension(self, query: str = ""):
+        """Retrieve long term memories for the relevant user."""
+        memories = self.client.get_user_memory(
+                        user_id=self.user_id,
+                        # text=query,
+                        # k=10,
+                        memory_function_ids=[self.subject_comprehension_function["id"]],
+                        )
+        print("\n\nSubject comprehension memories: ", memories)
+        if query == "":
+            sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["importance"], reverse=True)
+        else:
+            sorted_memories = sorted(memories["memories"], key=lambda x: x["scores"]["relevance"], reverse=True)
+        facts = ".\n".join([mem["text"] for mem in sorted_memories])
+        return facts
+
     def get_thread_summaries(self):
         """Retrieve the summaries for all threads."""
         thread_summaries = {}
@@ -261,33 +279,59 @@ class LongTermMemory:
             return tas_relevant_memories
 
 
+
+
+
 class PMAS:
-    """Personal Memory Augent System (PMAS) for the thesis2024 project."""
+    """Personal Memory Agent System (PMAS)."""
 
-    def __init__(self, llm_model, student_id="AugustSemrau_PMAS_Test1"):
+    def __init__(self, llm_model,
+                 student_name,
+                 course,
+                 subject):
         """Initialize the PMAS."""
-        self.ltm_class = LongTermMemory(user_name=student_id)
+        self.llm_model = llm_model
+        self.course = course
+        self.pmas_prompt = self.build_pmas_prompt(student_name=student_name,
+                                                course_name=course,
+                                                subject_name=subject)
+        self.pmas_executor = self.build_pmas()
 
-    def predict(self, query: str):
-        """Invoke the Personal Memory Augmented System to retrieve all TAS-relevant personal memory."""
-        tas_relevant_memories = self.ltm_class.predict(query=query)
-        return tas_relevant_memories
 
-    def save_conversation_step(self, user_query, llm_response):
-        """Save a conversation step in the long-term memory."""
-        self.ltm_class.save_conversation_step(user_query=user_query, llm_response=llm_response)
+    def build_pmas_prompt(self, student_name, course_name, subject_name):
+        """Build the agent prompt."""
+        prompt_hub_template = hub.pull("augustsemrau/pmas-agent-prompt").template
+        prompt_template = PromptTemplate.from_template(template=prompt_hub_template)
+        prompt = prompt_template.partial(student_name=student_name,
+                                         course_name=course_name,
+                                         subject_name=subject_name,
+                                        )
+        return prompt
 
-    def get_user_state(self):
-        """Retrieve the user state."""
-        return self.ltm_class.get_user_state()
+    def build_pmas(self):
+        """Build the Teaching Agent System (TAS)."""
+        tool_class = ToolClass()
+        tools = [tool_class.build_search_tool(),
+                 tool_class.build_retrieval_tool(course_name=self.course),
+                ]
 
-    def get_learning_preference_memories(self, query: str = ""):
-        """Retrieve learning preference memories."""
-        return self.ltm_class.get_learning_preference_memories(query=query)
+        pmas_agent = create_react_agent(llm=self.llm_model,
+                                       tools=tools,
+                                       prompt=self.pmas_prompt,
+                                       output_parser=None)
+        pmas_agent_executor = AgentExecutor(agent=pmas_agent,
+                                           tools=tools,
+                                        #    memory=self.short_term_memory,
+                                           verbose=True,
+                                           handle_parsing_errors=True)
+        return pmas_agent_executor
 
-    def get_subject_comprehension_memories(self, query: str = ""):
-        """Retrieve subject comprehension memories."""
-        return self.ltm_class.get_subject
+    def predict(self, conversation):
+        """Invoke the PMAS."""
+        # print("\n\nInteraction:\n", interaction)
+        personal_memory = self.pmas_executor.invoke({"input": conversation})["output"]
+        # print("\n\nPersonal Memory:\n", personal_memory)
+        return personal_memory
 
 
 
