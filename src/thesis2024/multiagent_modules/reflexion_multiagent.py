@@ -163,7 +163,7 @@ Never remove mathematical formulas or code examples, as they are crucial for the
             """Invoke the Reflexion Subgraph."""
             chat_hist = self.short_term_memory.buffer
             outline = self.plan(query=query, chat_hist=chat_hist)
-            print(f"Outline:\n{outline}\n\n")
+            # print(f"Outline:\n{outline}\n\n")
             retrieved_info = self.research_plan(outline=outline)
             # print(f"Retrieved information:\n{retrieved_info}\n\n")
             draft = self.initial_draft(outline=outline, retrieved_info=retrieved_info)
