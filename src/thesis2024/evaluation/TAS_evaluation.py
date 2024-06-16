@@ -171,11 +171,12 @@ Repetition Score: 0.75\n
     # dataset_name = "BASELINE_GPT-4"
     # dataset_name = "Eval_Testing"
     # dataset_name = "Reflexion_EvaluationSet_1"
+    dataset_name = "TMAS_Iterations_0"
     # dataset_name = "TMAS_Iterations_1"
     # dataset_name = "TMAS_Iterations_2"
     # dataset_name = "TMAS_Iterations_3"
     # dataset_name = "TAS_GPT35_Final"
-    dataset_name = "TAS_GPT4_Final"
+    # dataset_name = "TAS_GPT4_Final"
     langsmith_name = langsmith_name + dataset_name
     llm_model = init_llm_langsmith(llm_key=40, temp=0.5, langsmith_name=langsmith_name)
 
