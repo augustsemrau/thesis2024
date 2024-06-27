@@ -12,13 +12,13 @@ from thesis2024.multiagent_modules.reflexion_multiagent import ReflexionMultiAge
 @cl.on_chat_start
 def main():
     """Instantiate required classes for the user session."""
-    # student_name, student_course, student_subject = "August", "IntroToMachineLearning", "Linear Regression"
-    # student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
-    student_name, student_course, student_subject = "August", "IntroToMachineLearning", ""
-    student_learning_preferences = ""
+    student_name, student_course, student_subject = "August", "IntroToMachineLearning", "Linear Regression"
+    student_learning_preferences = "I prefer formulas and math in order to understand technical concepts"
+    # student_name, student_course, student_subject = "August", "IntroToMachineLearning", ""
+    # student_learning_preferences = ""
 
     """TAS Setup"""
-    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="TAS Chainlit-Conversation PMAS")
+    llm_model = init_llm_langsmith(llm_key=4, temp=0.5, langsmith_name="TAS Chainlit-Conversation")
     tas = TAS(llm_model=llm_model,
             baseline_bool=False,
             course=student_course,
